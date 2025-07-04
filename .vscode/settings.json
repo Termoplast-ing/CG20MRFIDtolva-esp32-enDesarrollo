@@ -1,0 +1,18 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPath": "/home/blavila/esp/esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.port": "/dev/ttyUSB0",
+    "idf.toolsPath": "/home/blavila/.espressif",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "queue.h": "c",
+        "modbus_crc.h": "c",
+        "freertos.h": "c",
+        "esp_log.h": "c",
+        "gpio.h": "c",
+        "stdbool.h": "c"
+    }
+}
