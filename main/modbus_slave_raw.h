@@ -27,6 +27,7 @@ extern uint8_t slave_addr;
 extern time_t timeStampDatos;
 extern time_t timeStampConfig;
 extern time_t timeStampCurva;
+extern time_t tiempoReal;
 
 
 void modbus_slave_init(void);
@@ -40,7 +41,8 @@ void modbus_slave_process_0x10(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x51(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x40(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x41(uint8_t *request, size_t request_len);
-void modbus_slave_process_0x42(uint8_t *request, size_t request_len);
+//void modbus_slave_process_0x42(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x60(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x61(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x70(uint8_t *request, size_t request_len);
 #endif // MODBUS_SLAVE_RAW_H

@@ -141,6 +141,7 @@ void modbus_slave_process_0x41(uint8_t *request, size_t len);
 void modbus_slave_process_0x42(uint8_t *request, size_t len);
 void modbus_slave_process_0x60(uint8_t *request, size_t len);
 void modbus_slave_process_0x61(uint8_t *request, size_t len);
+void modbus_slave_process_0x70(uint8_t *request, size_t len);
 
 #define SLAVE_ADDR slave_addr
 
@@ -149,6 +150,7 @@ data_animal auxiliar;
 configuration auxConfig;
 tipo_curva auxCurva;
 tipo_curva auxCurva2;
+time_t tiempoReal = 0; // Variable para almacenar el tiempo real del reloj
 
 uint8_t data[BUF_SIZE2];
 static const char *TAG = "MODBUS_SLAVE";
@@ -215,7 +217,7 @@ void modbus_slave_process(uint8_t *request, size_t len) {
 
     uint8_t function_code = request[1];
    // uint8_t funcion_codigo = request[2];
-   printf("brian%02x\n", function_code);
+
     switch (function_code) {
         case 0x03:
             modbus_slave_process_0x03(request, len);
@@ -232,8 +234,8 @@ void modbus_slave_process(uint8_t *request, size_t len) {
         case 0x41:
             modbus_slave_process_0x41(request, len);
             break;
-        case 0x42:
-            modbus_slave_process_0x42(request, len);
+    //    case 0x42:
+      //      modbus_slave_process_0x42(request, len);
             break;
         case 0x43:
            // modbus_slave_process_0x43(request, len);
@@ -252,6 +254,10 @@ void modbus_slave_process(uint8_t *request, size_t len) {
             break;
         case 0x61:
             modbus_slave_process_0x61(request, len);
+            break;
+        case 0x70:
+        printf("avila%02x\n", function_code);
+            modbus_slave_process_0x70(request, len);
             break;
         default:
             ESP_LOGW(TAG, "Función no soportada: 0x%02X", function_code);
@@ -461,8 +467,9 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
     ESP_LOGI(TAG, "0x51 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
     printf("datos time central:%llx\n",tiempoDatosCentral);
-    if (tiempoDatosCentral > timeStampDatos) {
+    if (tiempoDatosCentral >= timeStampDatos) {
         for (int i = 15; i<31; i++) {
+       
             auxiliar.nombre[(i-15)]= request[(i)]; //>> 8) & 0xFF; // Byte alto
             //axiliar.nombre[i*2 + 1] = request[((i*2)+1)] & 0xFF;        // Byte bajo
             printf("%c ", auxiliar.nombre[i-15]);
@@ -472,12 +479,14 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
         for(int i = 0; i < 8; i++) {
         auxiliar.fechaServicio = auxiliar.fechaServicio | ((uint64_t)request[33+i] << (8 * (7 - i)));
         }
+        
         auxiliar.indiceCorporal = request[41];
         auxiliar.agua = request[42] & 0x01; // Asumiendo que el bit 0 indica si hay agua
         auxiliar.cantDosis=request[43];
         auxiliar.intervaloMin=(((uint16_t) request[44]) << 8 |
                                 ((uint16_t) request[45] & 0xFF));
-    }
+    printf("fechaServicio= %lld\n", auxiliar.fechaServicio);
+                            }
 }
 // --- Ejemplo: Escribir múltiples registros (0x40) ---
 //Función: escribir datos de configuracion
@@ -503,12 +512,14 @@ void modbus_slave_process_0x40(uint8_t *request, size_t len)
 
     uint8_t response[8];
     response[0] = SLAVE_ADDR;
-    response[1] = 0x51;
+    response[1] = 0x40;
     response[2] = request[2];
     response[3] = request[3];
     response[4] = request[4];
-    response[5] = request[5];
-    response[6] = request[6];
+    if (tiempoConfigCentral > timeStampConfig) {
+        response[5] = 0xFF;
+        response[6] =  0xFF;
+    
 
     uint16_t crc = modbus_crc16(response, 6);
     response[7] = crc & 0xFF;
@@ -523,20 +534,35 @@ void modbus_slave_process_0x40(uint8_t *request, size_t len)
     
     ESP_LOGI(TAG, "0x40 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
-    if (tiempoConfigCentral > timeStampDatos) {
+    
         auxConfig.calibracionMotor = request[15];
         auxConfig.calibracionAgua = request[16];
         auxConfig.pesoAnimalDesconocido = request[17];
-    }        
+          
         printf("calibracionMotor= %02X\n", auxConfig.calibracionMotor);
         printf("calibracionAgua= %02X\n", auxConfig.calibracionAgua);
         printf("pesoAnimalDesconocido= %02X\n", auxConfig.pesoAnimalDesconocido);
+    }else{
+            response[5] = 0x00;
+        response[6] =  0x00;
+
+    uint16_t crc = modbus_crc16(response, 6);
+    response[7] = crc & 0xFF;
+    response[8] = crc >> 8;
+
+    gpio_set_level(GPIO_NUM_4, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
+    gpio_set_level(GPIO_NUM_4, 0);
+        }
 }
 // --- Ejemplo: Escribir múltiples registros (0x41) ---
 //Función: escribir datos de caravanas libre 1
 void modbus_slave_process_0x41(uint8_t *request, size_t len)
 {
-    printf("holis 41\n");
+
     uint16_t reg_start  = (request[2] << 8) | request[3];
     uint16_t quantity   = (request[4] << 8) | request[5];
 
@@ -574,13 +600,17 @@ void modbus_slave_process_0x41(uint8_t *request, size_t len)
     ///copia en numero de caravana
         for (int i = 0; i<15; i++) {
             auxConfig.caravanaLibre1[(i)]= request[(i+7)];
+            auxConfig.caravanaLibre2[(i)]= request[(i+7)+16];
+            auxConfig.caravanaLibre3[(i)]= request[(i+7)+39];
+            auxConfig.caravanaLibre4[(i)]= request[(i+7)+55];
+            auxConfig.caravanaLibre5[(i)]= request[(i+7)+71];
         }
         printf("L1= %s\n", auxConfig.caravanaLibre1);
 
 }
 // --- Ejemplo: Escribir múltiples registros (0x42) ---
 //Función: escribir datos de caravanas libre 2
-void modbus_slave_process_0x42(uint8_t *request, size_t len){
+/*void modbus_slave_process_0x42(uint8_t *request, size_t len){
     printf("holis 42\n");
     uint16_t reg_start  = (request[2] << 8) | request[3];
     uint16_t quantity   = (request[4] << 8) | request[5];
@@ -621,7 +651,7 @@ void modbus_slave_process_0x42(uint8_t *request, size_t len){
             auxConfig.caravanaLibre2[(i)]= request[(i+7)];
         }
         printf("L1= %s\n", auxConfig.caravanaLibre2);
-}
+}*/
 // --- Ejemplo: Escribir múltiples registros (0x60) ---
 //Función: escribir datos de tipo de curva
 void modbus_slave_process_0x60(uint8_t *request, size_t len){
@@ -651,8 +681,15 @@ void modbus_slave_process_0x60(uint8_t *request, size_t len){
     response[2] = request[2];
     response[3] = request[3];
     response[4] = request[4];
-    response[5] = request[5];
-    response[6] = request[6];
+       if (tiempoCurvaCentral > timeStampCurva) {
+        response[5] = 0xFF;
+        response[6] =  0xFF;
+       }else
+       {
+        response[5] = 0x00;
+        response[6] =  0x00;
+       }
+       
 
     uint16_t crc = modbus_crc16(response, 6);
     response[7] = crc & 0xFF;
@@ -715,9 +752,10 @@ void modbus_slave_process_0x61(uint8_t *request, size_t len){
     printf("C2= %d\n", auxCurva2.segmentos[i+16].pesoInicio);
     }
 }
-
-void modbus_slave_process_0x70(uint8_t *request, size_t len){
-    printf("holis 70\n");
+// --- Ejemplo: Escribir múltiples registros (0x60) ---
+//Función: escribir datos de tipo de curva
+void modbus_slave_process_0x62(uint8_t *request, size_t len){
+    printf("holis 62\n");
     uint16_t reg_start  = (request[2] << 8) | request[3];
     uint16_t quantity   = (request[4] << 8) | request[5];
     //uint8_t byte_count  = request[6];
@@ -731,7 +769,7 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     }
     uint8_t response[8];
     response[0] = SLAVE_ADDR;
-    response[1] = 0x61;
+    response[1] = 0x62;
     response[2] = request[2];
     response[3] = request[3];
     response[4] = request[4];
@@ -749,7 +787,7 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
     gpio_set_level(GPIO_NUM_4, 0);
     
-    ESP_LOGI(TAG, "0x61 - Escribí %d registros desde %d", quantity, reg_start);
+    ESP_LOGI(TAG, "0x62 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
     for (int i = 0; i<17; i++) {
         auxCurva.segmentos[i].inicio = request[7+(i*2)];
@@ -762,7 +800,198 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     printf("C2= %d\n", auxCurva2.segmentos[i+16].inicio);
     printf("C2= %d\n", auxCurva2.segmentos[i+16].pesoInicio);
     }
-    
 }
+// --- Ejemplo: Escribir múltiples registros (0x60) ---
+//Función: escribir datos de tipo de curva
+void modbus_slave_process_0x63(uint8_t *request, size_t len){
+    printf("holis 63\n");
+    uint16_t reg_start  = (request[2] << 8) | request[3];
+    uint16_t quantity   = (request[4] << 8) | request[5];
+    //uint8_t byte_count  = request[6];
+    if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
+        ESP_LOGW(TAG, "Rango fuera de los registros disponibles");
+        return;
+    }
+    for(int i = 0; i < quantity; i++) {
+        uint16_t val = (request[7 + i*2] << 8) | request[8 + i*2];
+        holding_registers[reg_start + i] = val;
+    }
+    uint8_t response[8];
+    response[0] = SLAVE_ADDR;
+    response[1] = 0x63;
+    response[2] = request[2];
+    response[3] = request[3];
+    response[4] = request[4];
+    response[5] = request[5];
+    response[6] = request[6];
+
+    uint16_t crc = modbus_crc16(response, 6);
+    response[7] = crc & 0xFF;
+    response[8] = crc >> 8;
+
+    gpio_set_level(GPIO_NUM_4, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
+    gpio_set_level(GPIO_NUM_4, 0);
+    
+    ESP_LOGI(TAG, "0x63 - Escribí %d registros desde %d", quantity, reg_start);
+    ///copia en numero de caravana
+    for (int i = 0; i<17; i++) {
+        auxCurva.segmentos[i].inicio = request[7+(i*2)];
+        auxCurva.segmentos[i].pesoInicio = request[8+(i*2)];
+        auxCurva2.segmentos[i+16].inicio = request[41+(i*2)];
+        auxCurva2.segmentos[i+16].pesoInicio = request[42+(i*2)];
+    printf("indice:%d",i);
+    printf("C1= %d\n", auxCurva.segmentos[i].inicio);
+    printf("C1= %d\n", auxCurva.segmentos[i].pesoInicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].inicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].pesoInicio);
+    }
+}
+// --- Ejemplo: Escribir múltiples registros (0x60) ---
+//Función: escribir datos de tipo de curva
+void modbus_slave_process_0x64(uint8_t *request, size_t len){
+    printf("holis 64\n");
+    uint16_t reg_start  = (request[2] << 8) | request[3];
+    uint16_t quantity   = (request[4] << 8) | request[5];
+    //uint8_t byte_count  = request[6];
+    if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
+        ESP_LOGW(TAG, "Rango fuera de los registros disponibles");
+        return;
+    }
+    for(int i = 0; i < quantity; i++) {
+        uint16_t val = (request[7 + i*2] << 8) | request[8 + i*2];
+        holding_registers[reg_start + i] = val;
+    }
+    uint8_t response[8];
+    response[0] = SLAVE_ADDR;
+    response[1] = 0x64;
+    response[2] = request[2];
+    response[3] = request[3];
+    response[4] = request[4];
+    response[5] = request[5];
+    response[6] = request[6];
+
+    uint16_t crc = modbus_crc16(response, 6);
+    response[7] = crc & 0xFF;
+    response[8] = crc >> 8;
+
+    gpio_set_level(GPIO_NUM_4, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
+    gpio_set_level(GPIO_NUM_4, 0);
+    
+    ESP_LOGI(TAG, "0x64 - Escribí %d registros desde %d", quantity, reg_start);
+    ///copia en numero de caravana
+    for (int i = 0; i<17; i++) {
+        auxCurva.segmentos[i].inicio = request[7+(i*2)];
+        auxCurva.segmentos[i].pesoInicio = request[8+(i*2)];
+        auxCurva2.segmentos[i+16].inicio = request[41+(i*2)];
+        auxCurva2.segmentos[i+16].pesoInicio = request[42+(i*2)];
+    printf("indice:%d",i);
+    printf("C1= %d\n", auxCurva.segmentos[i].inicio);
+    printf("C1= %d\n", auxCurva.segmentos[i].pesoInicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].inicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].pesoInicio);
+    }
+}
+// --- Ejemplo: Escribir múltiples registros (0x60) ---
+//Función: escribir datos de tipo de curva
+void modbus_slave_process_0x65(uint8_t *request, size_t len){
+    printf("holis 65\n");
+    uint16_t reg_start  = (request[2] << 8) | request[3];
+    uint16_t quantity   = (request[4] << 8) | request[5];
+    //uint8_t byte_count  = request[6];
+    if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
+        ESP_LOGW(TAG, "Rango fuera de los registros disponibles");
+        return;
+    }
+    for(int i = 0; i < quantity; i++) {
+        uint16_t val = (request[7 + i*2] << 8) | request[8 + i*2];
+        holding_registers[reg_start + i] = val;
+    }
+    uint8_t response[8];
+    response[0] = SLAVE_ADDR;
+    response[1] = 0x65;
+    response[2] = request[2];
+    response[3] = request[3];
+    response[4] = request[4];
+    response[5] = request[5];
+    response[6] = request[6];
+
+    uint16_t crc = modbus_crc16(response, 6);
+    response[7] = crc & 0xFF;
+    response[8] = crc >> 8;
+
+    gpio_set_level(GPIO_NUM_4, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
+    gpio_set_level(GPIO_NUM_4, 0);
+    
+    ESP_LOGI(TAG, "0x65 - Escribí %d registros desde %d", quantity, reg_start);
+    ///copia en numero de caravana
+    for (int i = 0; i<17; i++) {
+        auxCurva.segmentos[i].inicio = request[7+(i*2)];
+        auxCurva.segmentos[i].pesoInicio = request[8+(i*2)];
+        auxCurva2.segmentos[i+16].inicio = request[41+(i*2)];
+        auxCurva2.segmentos[i+16].pesoInicio = request[42+(i*2)];
+    printf("indice:%d",i);
+    printf("C1= %d\n", auxCurva.segmentos[i].inicio);
+    printf("C1= %d\n", auxCurva.segmentos[i].pesoInicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].inicio);
+    printf("C2= %d\n", auxCurva2.segmentos[i+16].pesoInicio);
+    }
+}
+// --- Ejemplo: Escribir múltiples registros (0x60) ---
+//Función: escribir datos de tipo de curva
+void modbus_slave_process_0x70(uint8_t *request, size_t len){
+    printf("holis 70\n");
+    uint16_t reg_start  = (request[2] << 8) | request[3];
+    uint16_t quantity   = (request[4] << 8) | request[5];
+    //uint8_t byte_count  = request[6];
+    if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
+        ESP_LOGW(TAG, "Rango fuera de los registros disponibles");
+        return;
+    }
+    for(int i = 0; i < quantity; i++) {
+        uint16_t val = (request[7 + i*2] << 8) | request[8 + i*2];
+        holding_registers[reg_start + i] = val;
+    }
+    uint8_t response[8];
+    response[0] = SLAVE_ADDR;
+    response[1] = 0x70;
+    response[2] = request[2];
+    response[3] = request[3];
+    response[4] = request[4];
+    response[5] = request[5];
+    response[6] = request[6];
+
+    uint16_t crc = modbus_crc16(response, 6);
+    response[7] = crc & 0xFF;
+    response[8] = crc >> 8;
+
+    gpio_set_level(GPIO_NUM_4, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
+    gpio_set_level(GPIO_NUM_4, 0);
+    
+    ESP_LOGI(TAG, "0x70 - Escribí %d registros desde %d", quantity, reg_start);
+    ///copia en numero de caravana
+    
+    for(int i = 0; i < 8; i++) {
+        tiempoReal = tiempoReal | ((uint64_t)request[7+i] << (8 * (7 - i)));
+    }
+    printf("tiemo real del reloj %llx\n", tiempoReal);
+    }
+    
+
 
 

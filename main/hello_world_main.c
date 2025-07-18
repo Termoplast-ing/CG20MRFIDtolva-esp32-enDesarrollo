@@ -113,7 +113,7 @@ uint8_t calibracionAgua=0;
 QueueHandle_t uart_queue;
 char caravana[16] = "000000000000001";
 uint16_t dispensado=0;
-uint8_t slave_addr = 0x05;
+uint8_t slave_addr = 0x02;
 uint8_t funcionCom=0; 
 
 
