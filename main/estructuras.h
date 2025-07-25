@@ -3,6 +3,8 @@
 #include <time.h>
 #include <stdbool.h>
 
+#define MAX_animales 100
+
 typedef struct {
     bool errorHoraDS1307;
     bool errorUART;
@@ -26,7 +28,7 @@ typedef struct {
 
 /////Estructura para almacenar los datos de los animales leidos por la antena RFID/////
 typedef struct{
-    char nombre[15];
+    char nombre[16];
     time_t fechaDispensado;
     uint8_t pesoDispensado;  
 } data_animal_leido;
@@ -43,12 +45,21 @@ typedef struct{
 } tipo_curva;
 
 typedef struct {
-    uint8_t caravanaLibre1[17];
-    uint8_t caravanaLibre2[17];
-    uint8_t caravanaLibre3[17];
-    uint8_t caravanaLibre4[17];
-    uint8_t caravanaLibre5[17];
+    uint8_t caravanaLibre1[16];
+    uint8_t caravanaLibre2[16];
+    uint8_t caravanaLibre3[16];
+    uint8_t caravanaLibre4[16];
+    uint8_t caravanaLibre5[16];
     uint8_t calibracionMotor;
     uint8_t calibracionAgua;
     uint8_t pesoAnimalDesconocido;
 } configuration;
+
+void cargar_datos_prueba(data_animal_leido animales1[], int cantidad);
+
+extern data_animal corral[25];
+extern data_animal auxiliar;
+extern configuration configuracion;
+extern tipo_curva curva[5];
+extern data_animal_leido animal_leido[MAX_animales];
+extern data_animal_leido animal_leido_AUX; // Inicializar el registro de animales leídos

@@ -44,5 +44,10 @@ void modbus_slave_process_0x41(uint8_t *request, size_t request_len);
 //void modbus_slave_process_0x42(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x60(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x61(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x62(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x63(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x64(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x65(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x70(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x20(uint8_t *request, size_t request_len);
 #endif // MODBUS_SLAVE_RAW_H

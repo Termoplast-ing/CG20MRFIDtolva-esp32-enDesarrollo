@@ -91,12 +91,12 @@ typedef struct{
 
 /////Definicion de Variables/////
 error_status_t errores = {0};
-data_animal corral[25];
-data_animal_leido animal_leido[300];
-tipo_curva curva[10];
+
+//data_animal_leido animal_leido[300];
+//tipo_curva curva[10];
+//data_animal corral[25]; // Inicializar el corral con 25 animales
 uint8_t diaGestacion;
 time_t now;
-int configuracion[5];
 struct tm ahora;
 time_t timeStampDatos=0;
 time_t timeStampCentralDatos=0;
@@ -117,7 +117,7 @@ uint8_t slave_addr = 0x02;
 uint8_t funcionCom=0; 
 
 
-void inicializarDatos(){
+/*void inicializarDatos(){
     for(uint8_t i=0;i<25;i++){
         corral[i].nombre[0]='\0';
         corral[i].tipoCurva=0xff;
@@ -128,12 +128,12 @@ void inicializarDatos(){
         corral[i].cantDosis=0;
         corral[i].intervaloMin=0;
     }
-}
-void inicializarConfig(){
+}*/
+/*void inicializarConfig(){
     for(uint8_t i=0;i<5;i++){
         configuracion[i]=0;
     }
-}
+}*/
 void inicializarCurva(){
         for(uint8_t i=0;i<10;i++){
             for(uint8_t j=0;j<17;j++){
@@ -255,7 +255,7 @@ void traerConfig(){
         return;
     }
 
-    err = nvs_set_blob(handle, "configuracion", configuracion, sizeof(configuracion));
+    //err = nvs_set_blob(handle, "configuracion", configuracion, sizeof(configuracion));
     if (err != ESP_OK) {
         ESP_LOGE("NVS", "Error guardando blob en NVS");
     } else {
@@ -320,7 +320,7 @@ void ROMtoRAMConfig(){
         guardarPersonasEnNVS();
     } else if (required_size == sizeof(configuracion)) {
         // Leer blob
-        err = nvs_get_blob(handle, "configuracion", configuracion, &required_size);
+     //   err = nvs_get_blob(handle, "configuracion", configuracion, &required_size);
         if (err == ESP_OK) {
             ESP_LOGI("NVS", "Arreglo de personas cargado correctamente");
         } else {
@@ -760,6 +760,84 @@ void active_message_task(void *pvParameters) {
         //////leo timestamp de los datos que tengo en el registro de los animales leidos y comparo con 
         /////con lo que esta en la central si es necesario se envian los datos
         printf("funcionando\n");
+        
+      /*DATOS DIETA  
+      for(uint16_t i=0;i<20;i++){
+            printf("imprimiendo animal %d\n", i);
+            if (strcmp(corral[i].nombre, "000000000000000") == 0) {
+                break;
+            }else{
+                printf("Nombre: %s\n", corral[i].nombre);
+                printf("Tipo Curva: %d\n", corral[i].tipoCurva);
+                printf("Peso Dosis: %d\n", corral[i].pesoDosis);
+                printf("Fecha Servicio: %lld\n", corral[i].fechaServicio);
+                printf("Indice Corporal: %d\n", corral[i].indiceCorporal);
+                printf("Agua: %d\n", corral[i].agua);
+                printf("Cantidad Dosis: %d\n", corral[i].cantDosis);
+                printf("Intervalo Min: %d\n", corral[i].intervaloMin);
+            }
+        }*/
+
+        /// DATOS DE CONFIGURACION
+        /*for(uint8_t i=0;i<5;i++){
+            printf("imprimiendo caravana libre  %d\n", i);
+            switch (i) {
+                case 0:
+                    printf("Ccaravana Libre 1: ");
+                    for(uint8_t j=0;j<15;j++){
+                        printf("%s", configuracion.caravanaLibre1);
+                    }
+                    printf("\n");
+                    break;
+                case 1:
+                    printf("Ccaravana Libre 2: ");
+                    for(uint8_t j=0;j<15;j++){
+                        printf("%s", configuracion.caravanaLibre2);
+                    }
+                    printf("\n");
+                    break;
+                case 2:
+                    printf("Ccaravana Libre 3: ");
+                    for(uint8_t j=0;j<15;j++){
+                        printf("%s", configuracion.caravanaLibre3);
+                    }
+                    printf("\n");
+                    break;
+                case 3:
+                    printf("Ccaravana Libre 4: ");
+                    for(uint8_t j=0;j<15;j++){
+                        printf("%s", configuracion.caravanaLibre4);
+                    }
+                    printf("\n");
+                    break;
+                case 4:
+                    printf("Ccaravana Libre 5: ");
+                    for(uint8_t j=0;j<15;j++){
+                        printf("%s", configuracion.caravanaLibre5);
+                    }
+                    printf("\n");
+                    break;
+            }
+            
+        }
+        printf("Calibracion Motor: %d\n", configuracion.calibracionMotor);
+        printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
+        printf("peso Dosis desconocidos: %d\n", configuracion.pesoAnimalDesconocido);*/
+
+       /* ///DATOS DE CURVAS
+
+        for(uint8_t i=0;i<5;i++){
+            printf("imprimiendo curva %d\n", i);
+            for(uint8_t j=0;j<18;j++){
+                printf("Segmento %d: Inicio: %d, Peso Inicio: %d\n", j, curva[i].segmentos[j].inicio, curva[i].segmentos[j].pesoInicio);
+            }
+        }*/
+        for (int i = 0; i < 100; i++) {
+    if (strcmp(animal_leido[i].nombre, "000000000000000") != 0) {
+        printf("Animal %d: %s\n", i, animal_leido[i].nombre);
+    }
+}
+        
         verificarSensores();
         reportarErrores();
         vTaskDelay(pdMS_TO_TICKS(60000)); // 10 minutos
@@ -773,6 +851,7 @@ void app_main(void) {
     gpio_set_level(motor,0);
     //test_nvs_corral();//(FUENCION PARA PROBAR LA LECTURA Y ESCRITURA EN NVS)
     modbus_slave_init();
+    cargar_datos_prueba(animal_leido,12);
 
 
 
@@ -798,13 +877,13 @@ void app_main(void) {
     err = nvs_get_i64(handle, "timeStampDatos", &timeStampDatos);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         timeStampDatos=0;
-        inicializarDatos(); // Si no existe, empezamos en 0
+    //    inicializarDatos(); // Si no existe, empezamos en 0
     }
 
     err = nvs_get_i64(handle, "timeStampConfig", &timeStampConfig);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         timeStampConfig=0;
-        inicializarConfig();  // Si no existe, empezamos en 0
+       // inicializarConfig();  // Si no existe, empezamos en 0
     }
 
     err = nvs_get_i64(handle, "timeStampCurva", &timeStampCurva);
@@ -817,12 +896,12 @@ void app_main(void) {
 
 
     if(timeStampDatos==0){
-        inicializarDatos();
+   //     inicializarDatos();
     }else{
         ROMtoRAMDatos();
     }
     if(timeStampConfig==0){
-        inicializarConfig();
+        //inicializarConfig();
     }else{
         ROMtoRAMConfig();
     }
@@ -834,7 +913,7 @@ void app_main(void) {
     
     
 
-    strncpy(corral[0].nombre, "999000000000015", sizeof(corral[0].nombre) - 1);
+   /* strncpy(corral[0].nombre, "999000000000015", sizeof(corral[0].nombre) - 1);
     corral[0].nombre[sizeof(corral[0].nombre) - 1] = '\0';
     strncpy(corral[1].nombre, "982000459578918", sizeof(corral[1].nombre) - 1);
     corral[1].nombre[sizeof(corral[1].nombre) - 1] = '\0';
@@ -864,7 +943,7 @@ void app_main(void) {
     init_i2c();
     printf("aca si");
     init_uart();
-    printf("aca no");
+    printf("aca no");*/
     
     ds1307_write_register(0x00,0x00);
     ds1307_write_register(0x01,0x10);
@@ -876,7 +955,8 @@ void app_main(void) {
 
     ds1307_write_register(0x07,0x93);
     //traerDatosROMtoRAM();
-
+    printf("arrancando\n");
+    vTaskDelay(pdMS_TO_TICKS(2000));
     xTaskCreate(active_message_task, "active_message_task", 2048, NULL, 9, NULL);
     
 
