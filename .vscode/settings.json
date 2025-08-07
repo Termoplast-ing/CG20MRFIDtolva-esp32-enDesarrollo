@@ -14,5 +14,6 @@
         "esp_log.h": "c",
         "gpio.h": "c",
         "stdbool.h": "c"
-    }
+    },
+    "idf.portWin": "COM4"
 }
