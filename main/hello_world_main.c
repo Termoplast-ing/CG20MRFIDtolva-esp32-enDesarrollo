@@ -775,7 +775,7 @@ void active_message_task(void *pvParameters) {
         /////con lo que esta en la central si es necesario se envian los datos
         printf("funcionando\n");
         
-      /*for(uint8_t j=0; j<20; j++){
+      for(uint8_t j=0; j<20; j++){
             printf("DATOS ANIMAL %d\n", j);
             printf("nombre: %s\n", corral[j].nombre);
             printf("tipoCurva: %d\n", corral[j].tipoCurva);
@@ -787,7 +787,7 @@ void active_message_task(void *pvParameters) {
             printf("intervaloMin: %d\n", corral[j].intervaloMin);
             printf("========================================\n");
 
-        }*/
+        }
 
         /// DATOS DE CONFIGURACION
      /*   for(uint8_t i=0;i<5;i++){
@@ -843,7 +843,7 @@ void active_message_task(void *pvParameters) {
                 printf("Segmento %d: Inicio: %d, Peso Inicio: %d\n", j, curva[i].segmentos[j].inicio, curva[i].segmentos[j].pesoInicio);
             }
         }*/
-        for (int i = 0; i < 100; i++) {
+      /*  for (int i = 0; i < 100; i++) {
             if (strcmp(animal_leido[i].nombre, "000000000000000") != 0 && animal_leido[i].nombre[0] != '\0') {
                 printf("[LISTA] Animal %d -> Nombre: %s, Peso: %d, Fecha: %lld\n",
                 i,
@@ -851,7 +851,7 @@ void active_message_task(void *pvParameters) {
                 animal_leido[i].pesoDispensado,
                 animal_leido[i].fechaDispensado);
     }
-}
+}*/
                 // Mostrar configuración actual
       /*  printf("=== CONFIGURACION ACTUAL ===\n");
         printf("Caravana Libre 1: %s\n", configuracion.caravanaLibre1);
