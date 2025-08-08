@@ -1141,7 +1141,7 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
    // printf("tiemo real del reloj %llx\n", tiempoReal);
     }
     
-void modbus_slave_process_0x20(uint8_t *request, size_t len)
+void modbus_slave_process_0x20(uint8_t *request, size_t len) 
 {   
     int ultimo_valido= -1;
     uint16_t reg_start = (request[2] << 8) | request[3];
