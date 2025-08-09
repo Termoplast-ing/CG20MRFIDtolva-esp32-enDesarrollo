@@ -227,6 +227,7 @@ void modbus_slave_process(uint8_t *request, size_t len) {
     uint8_t function_code = request[1];
    // uint8_t funcion_codigo = request[2];
 //printf("%d\n", function_code);
+//printf("Función recibida: 0x%02X\n", function_code);
     switch (function_code) {
         
         case 0x03:
@@ -443,7 +444,7 @@ void modbus_slave_process_0x10(uint8_t *request, size_t len)
 //Función: escribir datos de dieta de caravanas
 void modbus_slave_process_0x51(uint8_t *request, size_t len)
 {
-    
+    //printf("tareaMODBUS 51");
     uint16_t reg_start  = (request[2] << 8) | request[3];
     uint16_t quantity   = request[5];
     uint64_t tiempoDatosCentral = 0;
@@ -535,6 +536,7 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
                   //  corral[i]= auxiliar; // Copiamos los datos del animal al corral
                    // break;
                // }
+              // printf("posicion de animal: %d", request[4]);
             corral[request[4]]=auxiliar;     
             auxiliar = (data_animal){0}; // Limpiamos la estructura auxiliar para evitar datos residuales
                             //printf("aqui\n");
@@ -665,9 +667,9 @@ void modbus_slave_process_0x41(uint8_t *request, size_t len)
             auxConfig.caravanaLibre4[(i)]= request[(i+7)+55];
             auxConfig.caravanaLibre5[(i)]= request[(i+7)+71];
         }
-      //  printf("L1= %s\n", auxConfig.caravanaLibre1);
-       // printf("L2= %s\n", auxConfig.caravanaLibre2);
-       // printf("L3= %s\n", auxConfig.caravanaLibre3);
+        printf("L1= %s\n", auxConfig.caravanaLibre1);
+        printf("L2= %s\n", auxConfig.caravanaLibre2);
+        printf("L3= %s\n", auxConfig.caravanaLibre3);
         memcpy(configuracion.caravanaLibre1, auxConfig.caravanaLibre1, sizeof(configuracion.caravanaLibre1));
         memcpy(configuracion.caravanaLibre2, auxConfig.caravanaLibre2, sizeof(configuracion.caravanaLibre2));
         memcpy(configuracion.caravanaLibre3, auxConfig.caravanaLibre3, sizeof(configuracion.caravanaLibre3));

@@ -775,7 +775,7 @@ void active_message_task(void *pvParameters) {
         /////con lo que esta en la central si es necesario se envian los datos
         printf("funcionando\n");
         
-      for(uint8_t j=0; j<20; j++){
+      /*for(uint8_t j=0; j<20; j++){
             printf("DATOS ANIMAL %d\n", j);
             printf("nombre: %s\n", corral[j].nombre);
             printf("tipoCurva: %d\n", corral[j].tipoCurva);
@@ -787,54 +787,37 @@ void active_message_task(void *pvParameters) {
             printf("intervaloMin: %d\n", corral[j].intervaloMin);
             printf("========================================\n");
 
-        }
+        }*/
 
         /// DATOS DE CONFIGURACION
-     /*   for(uint8_t i=0;i<5;i++){
-            printf("imprimiendo caravana libre  %d\n", i);
-            switch (i) {
-                case 0:
-                    printf("Ccaravana Libre 1: ");
-
-                        printf("%s", configuracion.caravanaLibre1);
-
-                    printf("\n");
-                    break;
-                case 1:
-                    printf("Ccaravana Libre 2: ");
-
-                        printf("%s", configuracion.caravanaLibre2);
-
-                    printf("\n");
-                    break;
-                case 2:
-                    printf("Ccaravana Libre 3: ");
-
-                        printf("%s", configuracion.caravanaLibre3);
-
-                    printf("\n");
-                    break;
-                case 3:
-                    printf("Ccaravana Libre 4: ");
-
-                        printf("%s", configuracion.caravanaLibre4);
-  
-                    printf("\n");
-                    break;
-                case 4:
-                    printf("Ccaravana Libre 5: ");
-
-                        printf("%s", configuracion.caravanaLibre5);
-      
-                    printf("\n");
-                    break;
-            }
-            
+        printf("Caravana Libre 1 :");
+        for(uint8_t i = 0; i < 16; i++) {
+            printf("%c", configuracion.caravanaLibre1[i]);
         }
+        printf("\n");
+        printf("Caravana Libre 2 :");
+        for(uint8_t i = 0; i < 16; i++) {
+            printf("%c", configuracion.caravanaLibre2[i]);
+        }
+        printf("\n");
+        printf("Caravana Libre 3 :");
+        for(uint8_t i = 0; i < 16; i++) {
+            printf("%c", configuracion.caravanaLibre3[i]);
+        }
+        printf("\n");
+        printf("Caravana Libre 4 :");
+        for(uint8_t i = 0; i < 16; i++) {
+            printf("%c", configuracion.caravanaLibre4[i]);
+        }
+        printf("\n");
+        printf("Caravana Libre 5 :");
+        for(uint8_t i = 0; i < 16; i++) {
+            printf("%c", configuracion.caravanaLibre5[i]);
+        }
+        printf("\n");
         printf("Calibracion Motor: %d\n", configuracion.calibracionMotor);
         printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
         printf("peso Dosis desconocidos: %d\n", configuracion.pesoAnimalDesconocido);
-*/
        /* ///DATOS DE CURVAS
 
         for(uint8_t i=0;i<5;i++){
