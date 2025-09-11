@@ -21,7 +21,7 @@ typedef struct {
     uint8_t pesoDosis;
     time_t fechaServicio;
     uint8_t indiceCorporal;
-    bool agua;
+    uint8_t agua;
     uint8_t cantDosis;
     uint16_t intervaloMin;    
 } data_animal;
@@ -56,6 +56,7 @@ typedef struct {
 } configuration;
 
 void cargar_datos_prueba(data_animal_leido animales1[], int cantidad);
+void inicializar_curvas();
 
 extern data_animal corral[25];
 extern data_animal auxiliar;
@@ -63,3 +64,5 @@ extern configuration configuracion;
 extern tipo_curva curva[5];
 extern data_animal_leido animal_leido[MAX_animales];
 extern data_animal_leido animal_leido_AUX; // Inicializar el registro de animales leídos
+extern time_t now;
+extern struct tm ahora;

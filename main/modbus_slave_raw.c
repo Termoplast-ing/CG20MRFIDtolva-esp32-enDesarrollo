@@ -130,6 +130,8 @@ void modbus_slave_process_0x10(uint8_t *request, size_t request_len) {
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "estructuras.h"
+#include "reloj.h"
+
 
 #define UART_NUM2 UART_NUM_2
 #define MAX_ANIMALES 100
@@ -569,27 +571,38 @@ void modbus_slave_process_0x40(uint8_t *request, size_t len)
     //printf("tiempoDatosCentral: %lld\n", tiempoConfigCentral);
     //printf("tiempoConfigCentral: %lld\n", timeStampConfig);
 
-    uint8_t response[8];
-    response[0] = SLAVE_ADDR;
+    uint8_t response[9];
+
+    printf("tiempo central: %lld\n", tiempoConfigCentral);
+    printf("tiempo config: %lld\n", timeStampConfig);
+
+    if (tiempoConfigCentral > timeStampConfig) {
+            response[0] = SLAVE_ADDR;
     response[1] = 0x40;
     response[2] = request[2];
     response[3] = request[3];
     response[4] = request[4];
-    if (tiempoConfigCentral > timeStampConfig) {
         response[5] = 0xFF;
         response[6] =  0xFF;
+        printf("%d\n",response[5]);
+        printf("%d\n",response[6]);
     
         timeStampConfig = tiempoConfigCentral; // Actualizar el timestamp de configuración
     uint16_t crc = modbus_crc16(response, 6);
     response[7] = crc & 0xFF;
     response[8] = crc >> 8;
-
+printf("response[5]= %d\n", response[5]);
+printf("response[6]= %d\n", response[6]);
     gpio_set_level(GPIO_NUM_4, 1);
     vTaskDelay(pdMS_TO_TICKS(2));
 
-    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_write_bytes(UART_NUM2, (const char *)response, 9);
     uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
     gpio_set_level(GPIO_NUM_4, 0);
+   
+
+    printf("%d\n",response[5]);
+printf("%d\n",response[6]);
     
     //ESP_LOGI(TAG, "0x40 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
@@ -604,7 +617,19 @@ void modbus_slave_process_0x40(uint8_t *request, size_t len)
         configuracion.calibracionMotor=auxConfig.calibracionMotor;
         configuracion.calibracionAgua = auxConfig.calibracionAgua;
         configuracion.pesoAnimalDesconocido = auxConfig.pesoAnimalDesconocido;
+            corral[20].agua=255;
+    corral[20].cantDosis=1;
+    corral[20].indiceCorporal=1;
+    corral[20].intervaloMin=0;
+    corral[20].pesoDosis=configuracion.pesoAnimalDesconocido;
+    corral[20].tipoCurva=1;
+    corral[20].fechaServicio=0;
     }else{
+                  response[0] = SLAVE_ADDR;
+    response[1] = 0x40;
+    response[2] = request[2];
+    response[3] = request[3];
+    response[4] = request[4];
             response[5] = 0x00;
         response[6] =  0x00;
 
@@ -615,9 +640,10 @@ void modbus_slave_process_0x40(uint8_t *request, size_t len)
     gpio_set_level(GPIO_NUM_4, 1);
     vTaskDelay(pdMS_TO_TICKS(2));
 
-    uart_write_bytes(UART_NUM2, (const char *)response, 8);
+    uart_write_bytes(UART_NUM2, (const char *)response, 9);
     uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
     gpio_set_level(GPIO_NUM_4, 0);
+
         }
 }
 // --- Ejemplo: Escribir múltiples registros (0x41) ---
@@ -675,7 +701,25 @@ void modbus_slave_process_0x41(uint8_t *request, size_t len)
         memcpy(configuracion.caravanaLibre3, auxConfig.caravanaLibre3, sizeof(configuracion.caravanaLibre3));
         memcpy(configuracion.caravanaLibre4, auxConfig.caravanaLibre4, sizeof(configuracion.caravanaLibre4));
         memcpy(configuracion.caravanaLibre5, auxConfig.caravanaLibre5, sizeof(configuracion.caravanaLibre5));
+
+memcpy(corral[21].nombre,configuracion.caravanaLibre1,sizeof(configuracion.caravanaLibre1));
+memcpy(corral[22].nombre,configuracion.caravanaLibre2,sizeof(configuracion.caravanaLibre2));
+memcpy(corral[23].nombre,configuracion.caravanaLibre3,sizeof(configuracion.caravanaLibre3));
+memcpy(corral[24].nombre,configuracion.caravanaLibre4,sizeof(configuracion.caravanaLibre4));
+
+
+for(uint8_t i=21; i<25;i++){
+    corral[i].agua=255;
+    corral[i].cantDosis=1;
+    corral[i].indiceCorporal=1;
+    corral[i].intervaloMin=0;
+    corral[i].pesoDosis=1;
+    corral[i].tipoCurva=1;
+    corral[i].fechaServicio=mktime(&ahora);
+    }
+
 }
+
 // --- Ejemplo: Escribir múltiples registros (0x42) ---
 //Función: escribir datos de caravanas libre 2
 /*void modbus_slave_process_0x42(uint8_t *request, size_t len){
@@ -750,8 +794,8 @@ void modbus_slave_process_0x60(uint8_t *request, size_t len){
     response[3] = request[3];
     response[4] = request[4];
        if (tiempoCurvaCentral > timeStampCurva) {
-        response[5] = 0xFF;
-        response[6] =  0xFF;
+        response[5] = 0x00;
+        response[6] =  0x00;
         timeStampCurva = tiempoCurvaCentral; // Actualizar el timestamp de curva
        }else
        {
@@ -1106,10 +1150,10 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     uint16_t reg_start  = (request[2] << 8) | request[3];
     uint16_t quantity   = (request[4] << 8) | request[5];
     //uint8_t byte_count  = request[6];
-    if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
+   /* if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
         ESP_LOGW(TAG, "Rango fuera de los registros disponibles");
         return;
-    }
+    }*/
     for(int i = 0; i < quantity; i++) {
         uint16_t val = (request[7 + i*2] << 8) | request[8 + i*2];
         holding_registers[reg_start + i] = val;
@@ -1137,9 +1181,29 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     ESP_LOGI(TAG, "0x70 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
     
+    tiempoReal=0;
     for(int i = 0; i < 8; i++) {
         tiempoReal = tiempoReal | ((uint64_t)request[7+i] << (8 * (7 - i)));
     }
+
+    now = tiempoReal;
+    printf("timestam tarea: %lld\n", now);
+    localtime_r(&now, &ahora);
+    printf("Fecha y hora actual tarea: %04d-%02d-%02d %02d:%02d:%02d\n",
+           ahora.tm_year + 1900, ahora.tm_mon + 1, ahora.tm_mday,
+           ahora.tm_hour, ahora.tm_min, ahora.tm_sec);
+
+
+        ds1307_write_register(0x00, (decimal_to_bcd(ahora.tm_sec)));
+    ds1307_write_register(0x01, (decimal_to_bcd(ahora.tm_min)));
+    ds1307_write_register(0x02,(decimal_to_bcd(ahora.tm_hour)));
+    ds1307_write_register(0x04,(decimal_to_bcd(ahora.tm_mday)));
+    ds1307_write_register(0x05,(decimal_to_bcd(ahora.tm_mon + 1)));
+    ds1307_write_register(0x06,(decimal_to_bcd(ahora.tm_year - 100)));
+   
+
+    ds1307_write_register(0x07,0x93);
+
    // printf("tiemo real del reloj %llx\n", tiempoReal);
     }
     

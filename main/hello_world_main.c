@@ -18,6 +18,7 @@
 #include "modbus_crc.h"
 #include "modbus_slave_raw.h"
 #include "esp_err.h"
+#include "reloj.h"
 /////Definicion de Pines y Variables/////
 
 #define UART_NUM UART_NUM_1
@@ -25,10 +26,10 @@
 #define RXD_PIN GPIO_NUM_26
 #define RTS_PIN GPIO_NUM_27
 #define BUF_SIZE 1024
-#define I2C_SLAVE_ADDR 0x68
-#define I2C_SDA GPIO_NUM_21
-#define I2C_SCL GPIO_NUM_22
-#define TIMEOUT_MS 1000
+//#define I2C_SLAVE_ADDR 0x68
+//#define I2C_SDA GPIO_NUM_21
+//#define I2C_SCL GPIO_NUM_22
+//#define TIMEOUT_MS 1000
 #define jaula GPIO_NUM_34
 #define tolva GPIO_NUM_35
 #define motor GPIO_NUM_32
@@ -95,23 +96,26 @@ error_status_t errores = {0};
 uint8_t diaGestacion;
 time_t now;
 struct tm ahora;
-time_t timeStampDatos=0;
-time_t timeStampCentralDatos=0;
-time_t timeStampConfig=0;
-time_t timeStampCentralConfig=0;
-time_t timeStampCurva=0;
-time_t timeStampCentralCurva=0;
+time_t timeStampDatos=1;
+time_t timeStampCentralDatos=1;
+time_t timeStampConfig=1;
+time_t timeStampCentralConfig=1;
+time_t timeStampCurva=1;
+time_t timeStampCentralCurva=1;
 uint8_t actual=0;
 uint8_t diaAnterior=0;
 time_t horaLecturaAnterior=0;
 char caravanaAnterior[16] = "000000000000000";
-uint8_t calibracionMotor=0;
-uint8_t calibracionAgua=0;
+uint8_t calibracionMotor=1;
+uint8_t calibracionAgua=1;
 QueueHandle_t uart_queue;
 char caravana[16] = "000000000000001";
-uint16_t dispensado=0;
+uint16_t dispensado=1;
 uint8_t slave_addr = 0x02;
 uint8_t funcionCom=0; 
+float corporal=1;
+float indiceCorporal[3]={0.5,1,2};
+
 
 
 /*void inicializarDatos(){
@@ -131,14 +135,7 @@ uint8_t funcionCom=0;
         configuracion[i]=0;
     }
 }*/
-void inicializarCurva(){
-        for(uint8_t i=0;i<10;i++){
-            for(uint8_t j=0;j<17;j++){
-                curva[i].segmentos[j].inicio=0;
-                curva[i].segmentos[j].pesoInicio=0;
-            }
-        }
-}
+
 
 void guardarPersonasEnNVS(){}
 /////funcion que pide los datos del corral por uart a la central y los deja en la RAM y una copia en la ROM/////
@@ -378,26 +375,27 @@ void ROMtoRAMCurva(){
 void apagado_motor(void *pvParameters) {
     float tiempoA=0;
     float tiempoM=0;
-    tiempoM=dispensado/calibracionMotor;
-    tiempoA=tiempoM*calibracionAgua;
+    tiempoM=((float)((float)dispensado)*configuracion.calibracionMotor);
+    tiempoA=tiempoM*(((float)configuracion.calibracionAgua)/((float)configuracion.calibracionMotor));
     printf("dispensado %d\n",dispensado);
-    printf("calibracionMotor %d\n",calibracionMotor);
-    printf("calibracionAgua %d\n",calibracionAgua);
-    printf("tiempoAgua %f\n",tiempoA);
-    printf("tiempoMotor %f\n",tiempoM);
+    printf("calibracionMotor %d\n",configuracion.calibracionMotor);
+    printf("calibracionAgua %d\n",configuracion.calibracionAgua);
+    printf("tiempoAgua %d\n",(int)tiempoA);
+    printf("tiempoMotor %d\n",(int)tiempoM);
+    
     if(tiempoA>tiempoM){
         printf("arrancaTM");
-        vTaskDelay(pdMS_TO_TICKS(tiempoM*1000));
-        gpio_set_level(motor, 0);
+        vTaskDelay(pdMS_TO_TICKS((int)(tiempoM*1000)));
+        gpio_set_level(motor, 1);
         printf("arrancaTA");
-        vTaskDelay(pdMS_TO_TICKS((tiempoA-tiempoM)*1000));
-        gpio_set_level(valvula,0);
+        vTaskDelay(pdMS_TO_TICKS((int)((tiempoA-tiempoM)*1000)));
+        gpio_set_level(valvula,1);
         printf("arrancaTM");
     }else{
-        vTaskDelay(pdMS_TO_TICKS(tiempoM*1000));
-        gpio_set_level(motor, 0);
-        vTaskDelay(pdMS_TO_TICKS((tiempoA-tiempoM)*1000));
-        gpio_set_level(valvula,0);
+        vTaskDelay(pdMS_TO_TICKS((int)(tiempoA*1000)));
+        gpio_set_level(valvula, 1);
+        vTaskDelay(pdMS_TO_TICKS((int)((tiempoM-tiempoA)*1000)));
+        gpio_set_level(motor,1);
     }
     vTaskDelete(NULL);
 }
@@ -415,9 +413,11 @@ void reportarErrores() {
 
 /////Funcion para calcular el dia de gestacion///// 
 uint8_t dia_gestacion(uint8_t indice){
+    printf("indice %d\n",indice);
+    printf("fecha servicio %lld\n",corral[indice].fechaServicio);
     time_t fechaInseminacion = corral[indice].fechaServicio;
     now = mktime(&ahora);
-    double seconds_diff = difftime(now, fechaInseminacion);
+    u_int64_t seconds_diff = difftime(now, fechaInseminacion);
     diaGestacion = seconds_diff / (60 * 60 * 24);
     return diaGestacion;
 }
@@ -429,13 +429,17 @@ uint16_t calcular_peso(uint8_t indice){
     uint8_t diaFin=0;
     uint8_t pesoInicio=0;
     uint8_t pesoFin=0;
+    uint8_t curvaUsada=corral[indice].tipoCurva;
     float pendiente = 0.0;
     float denominador = 1.0;
     uint8_t pesoDosis=0;
-    uint16_t pesoTotal=0;
+    float pesoTotal=0;
     if(indice<20){    
         for(uint8_t i=0;i<18;i++){
-            if (curva[corral[indice].tipoCurva].segmentos[i].inicio>diaGestacionAUX){
+            printf("indice:%d\n", indice);
+            printf("tipocurva:%d\n", corral[indice].tipoCurva);
+            printf("curva usa:%d\n", curva[corral[indice].tipoCurva].segmentos[i].inicio);
+            if (curva[curvaUsada].segmentos[i].inicio>diaGestacionAUX){
                 diaFin=curva[corral[indice].tipoCurva].segmentos[i].inicio;
                 pesoFin=curva[corral[indice].tipoCurva].segmentos[i].pesoInicio;
                 diaInicio=curva[corral[indice].tipoCurva].segmentos[i-1].inicio;
@@ -443,11 +447,18 @@ uint16_t calcular_peso(uint8_t indice){
                 break;
             }
         }
+        corporal=indiceCorporal[corral[indice].indiceCorporal];
         corral[indice].cantDosis=1;
         denominador=diaFin-diaInicio;
         pendiente=((float)(pesoFin-pesoInicio)/(float)(denominador));
         pesoDosis=(pendiente*(diaGestacionAUX-diaInicio))+pesoInicio;
-        pesoTotal=(corral[indice].indiceCorporal*(pesoDosis*corral[indice].pesoDosis))/(corral[indice].cantDosis);
+        printf("pesoDosis: %d\n", pesoDosis);
+        printf("cantDosis: %d\n", corral[indice].cantDosis);
+        printf("indiceCorporal: %d\n", corral[indice].indiceCorporal);
+        printf("pesoAnimal: %d\n", corral[indice].pesoDosis);
+
+        pesoTotal=(float)((corporal*(((float)pesoDosis/100.0f)*corral[indice].pesoDosis))/(corral[indice].cantDosis));
+        printf("pesoTotal: %f\n", pesoTotal);
     }else{
         if(indice==20){
             pesoTotal=corral[20].pesoDosis/corral[20].cantDosis;
@@ -461,7 +472,7 @@ uint16_t calcular_peso(uint8_t indice){
 ///// funcion para guardar el registro del animal leido y la accion del sistema en un arreglo que es el/////
 /////que se le va  a pasar al controlador central///// 
 void guardar_registro(uint8_t indice,struct tm ahora){
-    for(uint16_t i=0;i<300;i++){
+    for(uint16_t i=0;i<100;i++){
         if(animal_leido[i].nombre[0]=='\0'){
             strcpy(animal_leido[i].nombre, corral[indice].nombre);
             animal_leido[i].fechaDispensado=mktime(&ahora);
@@ -479,10 +490,12 @@ void guardar_registro(uint8_t indice,struct tm ahora){
 
 /////Funcion para mover el motor para tirar comida y abrir la electrovalvula segun la configuracion del//////
 /////del sistema y de los animales/////
-void dispensar_alimento(){
+void dispensar_alimento(uint8_t indice){
     //motor
-    gpio_set_level(motor,1);
-    gpio_set_level(valvula, 1);
+    gpio_set_level(motor,0);
+    if(corral[indice].agua>0){
+        gpio_set_level(valvula,0);
+    }
     printf("encendido");
     xTaskCreate(apagado_motor, "apagado_motor", 2048, NULL, 6, NULL);
 }
@@ -495,7 +508,7 @@ void debe_comer(uint8_t indice){
     
     
     ///busco en los registro del dia si ya comio el animal
-    for(uint16_t j=0;j<300;j++){
+    for(uint16_t j=0;j<100;j++){
         if((strcmp(animal_leido[j].nombre, corral[indice].nombre) == 0)&(animal_leido[j].pesoDispensado > 0)){
             dosisDadas ++;
             ultimaDosis = animal_leido[j].fechaDispensado;
@@ -504,11 +517,15 @@ void debe_comer(uint8_t indice){
     }
     ///si no comio llamo a la funcion que calcula el peso de la dosis
     if(dosisDadas==0){
-        dispensado=calcular_peso(indice)/10;
+        printf("pesoComidaAnimal: %d\n",corral[indice].pesoDosis);
+        printf("diaGestacion: %d\n",dia_gestacion(indice));
+        dispensado=calcular_peso(indice);
+        printf("PESO dispensado: %d\n",dispensado);
     }else{
         ///si ya comio verifico si ya paso el tiempo para volver a darle de comer
         if((dosisDadas<=corral[indice].cantDosis)&(difftime(now, ultimaDosis)>corral[indice].intervaloMin)){
-            dispensado=pesoDado;
+            dispensado=(uint16_t)pesoDado;
+            
         }else{
             dispensado=0;
         }
@@ -518,7 +535,8 @@ void debe_comer(uint8_t indice){
     ///entro pero no se le dio comida
     if(dispensado==0){
         if(indice<21){
-            guardar_registro(indice,ahora);
+            //guardar_registro(indice,ahora);
+            printf("No se le da de comer al animal %s\n", corral[indice].nombre);
         }
     ///si hay que dar de comer guardo el registro en el arreglo de registros para saber que el animal
     ///entro y se le dio comida y llamo a la funcion que dispensa la comida
@@ -526,8 +544,8 @@ void debe_comer(uint8_t indice){
         printf("estoy aca\n");
         if(indice<21){
             guardar_registro(indice,ahora);
-            printf("estoy aca\n");
-            dispensar_alimento();
+            printf("estoy aca guardando\n");
+            dispensar_alimento(indice);
         }
     }
 }
@@ -535,28 +553,37 @@ void debe_comer(uint8_t indice){
 /////funcion para atender la lectura de un animal
 void atencion_lectura(){
     ///verifico que si se cambio el dia de gestacion se borren los registros de los animales
+
     actual=dia_gestacion(0);
+    printf("actual %d\n",actual);
     if(actual>diaAnterior){
-        for(uint16_t i=0;i<300;i++){
+        for(uint8_t i=0;i<100;i++){
             animal_leido[i].nombre[0]='\0';
             animal_leido[i].fechaDispensado=0;
             animal_leido[i].pesoDispensado=0;
         }
         diaAnterior=actual;
     }
+    //indentifico que posicion del la variable corral ocupa la caravana leida
+    
+    
 
     ///verifico si la caravana leida es de un animal conocido
-    for (uint8_t i = 0; i < 20; i++){
+    for (uint8_t i = 0; i < 25; i++){
+        printf("1:%s\n",corral[i].nombre);
+        printf("2:%s\n",caravana);
         if(strcmp(corral[i].nombre, caravana) == 0){
+
             debe_comer(i);
             break;
         }
     }
     
+    
 }
 
 /////inicializacion de la comunicacion I2C (SDA = GPIO21)(SCL = GPIO22)/////
-void init_i2c() {
+/*void init_i2c() {
     i2c_config_t i2c_config = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = I2C_SDA,
@@ -621,7 +648,7 @@ esp_err_t read_time() {
     ahora.tm_year = bcd_to_decimal(year) + 100;
     return ESP_OK;
 }
-
+*/
 /////Monitorear sensores de tolva y jaula/////
 void verificarSensores() {
     errores.tolvaVacia = gpio_get_level(tolva) == 0;
@@ -640,7 +667,7 @@ void uart_event_task(void *pvParameters) {
                     int len = uart_read_bytes(UART_NUM, data, event.size, pdMS_TO_TICKS(100));
                     if (len > 0) {
                         data[len] = '\0';
-                        printf("Dato recibido: %s\n", data);
+                        //printf("Dato recibido: %s\n", data);
                         caravana[0] = data[9];
                         caravana[1] = data[10];
                         caravana[2] = data[11];
@@ -657,20 +684,25 @@ void uart_event_task(void *pvParameters) {
                         caravana[13] = data[22];
                         caravana[14] = data[23];
                         caravana[15] = '\0';
-                        printf("Caravana: %s\n", caravana);
-                        printf("[UART] Caravana procesada -> %s\n", caravana);
+                        //printf("Caravana: %s\n", caravana);
+                        //printf("[UART] Caravana procesada -> %s\n", caravana);
                         //leo la hora real y comparo si es el mismo animal que el anterior y pasaron
                         //mas de 5 minutos lo tomo como valido sino los descarto y si es diferente 
                         //lo tomo como valido independientemente del tiempo
                         read_time();
                         now=mktime(&ahora);
-                        printf("Hora: %d:%d:%d\n", ahora.tm_hour, ahora.tm_min, ahora.tm_sec);
-                        printf("%lld\n",now);            
+                        //printf("Hora: %d:%d:%d\n", ahora.tm_hour, ahora.tm_min, ahora.tm_sec);
+                        //printf("%lld\n",now);  
+                        //printf("%s\n",caravana);
+                        //printf("%s\n",corral[1].nombre);
+                        //printf("%s\n",caravanaAnterior);          
                         if(strcmp(caravana,caravanaAnterior) != 0){
+                            printf("repite animal\n");
                             strcpy(caravanaAnterior, caravana);
                             horaLecturaAnterior=mktime(&ahora);
                             atencion_lectura();     
                         }else{
+                            printf("otro animal\n");
                             now = mktime(&ahora);
                             if(difftime(now, horaLecturaAnterior) > 300) {
                                 atencion_lectura();
@@ -775,7 +807,7 @@ void active_message_task(void *pvParameters) {
         /////con lo que esta en la central si es necesario se envian los datos
         printf("funcionando\n");
         
-      /*for(uint8_t j=0; j<20; j++){
+      for(uint8_t j=0; j<20; j++){
             printf("DATOS ANIMAL %d\n", j);
             printf("nombre: %s\n", corral[j].nombre);
             printf("tipoCurva: %d\n", corral[j].tipoCurva);
@@ -787,10 +819,10 @@ void active_message_task(void *pvParameters) {
             printf("intervaloMin: %d\n", corral[j].intervaloMin);
             printf("========================================\n");
 
-        }*/
+        }
 
         /// DATOS DE CONFIGURACION
-        printf("Caravana Libre 1 :");
+        /*printf("Caravana Libre 1 :");
         for(uint8_t i = 0; i < 16; i++) {
             printf("%c", configuracion.caravanaLibre1[i]);
         }
@@ -817,15 +849,15 @@ void active_message_task(void *pvParameters) {
         printf("\n");
         printf("Calibracion Motor: %d\n", configuracion.calibracionMotor);
         printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
-        printf("peso Dosis desconocidos: %d\n", configuracion.pesoAnimalDesconocido);
-       /* ///DATOS DE CURVAS
+        printf("peso Dosis desconocidos: %d\n", configuracion.pesoAnimalDesconocido);*/
+       //DATOS DE CURVAS
 
         for(uint8_t i=0;i<5;i++){
             printf("imprimiendo curva %d\n", i);
             for(uint8_t j=0;j<18;j++){
                 printf("Segmento %d: Inicio: %d, Peso Inicio: %d\n", j, curva[i].segmentos[j].inicio, curva[i].segmentos[j].pesoInicio);
             }
-        }*/
+        }
       /*  for (int i = 0; i < 100; i++) {
             if (strcmp(animal_leido[i].nombre, "000000000000000") != 0 && animal_leido[i].nombre[0] != '\0') {
                 printf("[LISTA] Animal %d -> Nombre: %s, Peso: %d, Fecha: %lld\n",
@@ -836,7 +868,7 @@ void active_message_task(void *pvParameters) {
     }
 }*/
                 // Mostrar configuración actual
-      /*  printf("=== CONFIGURACION ACTUAL ===\n");
+       printf("=== CONFIGURACION ACTUAL ===\n");
         printf("Caravana Libre 1: %s\n", configuracion.caravanaLibre1);
         printf("Caravana Libre 2: %s\n", configuracion.caravanaLibre2);
         printf("Caravana Libre 3: %s\n", configuracion.caravanaLibre3);
@@ -846,7 +878,11 @@ void active_message_task(void *pvParameters) {
         printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
         printf("Peso Animal Desconocido: %d\n", configuracion.pesoAnimalDesconocido);
         printf("============================\n");
-        printf("Caravana leida: %s\n", caravana);*/
+        printf("Caravana leida: %s\n", caravana);
+        read_time();
+        printf("Hora actual: %d:%d:%d\n", ahora.tm_hour, ahora.tm_min, ahora.tm_sec);
+        printf("Fecha actual: %d/%d/%d\n", ahora.tm_mday, ahora.tm_mon + 1, ahora.tm_year + 1900);
+        printf("Timestamp actual: %lld\n", mktime(&ahora));
         verificarSensores();
         reportarErrores();
         vTaskDelay(pdMS_TO_TICKS(60000)); // 10 minutos
@@ -857,15 +893,15 @@ void app_main(void) {
  //   printf(">>> Arrancando app_main <<<\n");
     gpio_set_direction(motor, GPIO_MODE_OUTPUT);
     gpio_set_direction(valvula, GPIO_MODE_OUTPUT);
-    gpio_set_level(valvula,0);
-    gpio_set_level(motor,0);
+    gpio_set_level(valvula,1);
+    gpio_set_level(motor,1);
     //test_nvs_corral();//(FUENCION PARA PROBAR LA LECTURA Y ESCRITURA EN NVS)
     modbus_slave_init();
-    cargar_datos_prueba(animal_leido,12);
-
+  //  cargar_datos_prueba(animal_leido,12);
+    inicializar_curvas();
+esp_err_t err;
     /////leer timestamp de la central y compararlos con los de la ROM
-   nvs_handle_t handle;
-    esp_err_t err;
+
 
     ///// Inicializar NVS NO SE VUELVE A EJECUTAR
 
@@ -875,7 +911,10 @@ void app_main(void) {
         return;
     }
 
-    err = nvs_open("storage", NVS_READWRITE, &handle);
+    nvs_handle_t handle;
+    
+
+    err = nvs_open("TimeStamp", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGE("NVS", "Error abriendo NVS");
         return;
@@ -884,25 +923,55 @@ void app_main(void) {
     err = nvs_get_i64(handle, "timeStampDatos", &timeStampDatos);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         timeStampDatos=0;
-    //    inicializarDatos(); // Si no existe, empezamos en 0
+        err = nvs_set_i64(handle, "timeStampDatos", timeStampDatos);
+        if(err != ESP_OK) {
+            ESP_LOGE("NVS", "Error guardando valor (%s)", esp_err_to_name(err));
+        } else {
+            err = nvs_commit(handle);
+            if (err != ESP_OK) {
+                ESP_LOGE("NVS", "Error al hacer commit (%s)", esp_err_to_name(err));
+            } else {
+                ESP_LOGI("NVS", "Valor guardado correctamente");
+            }
+        }
     }
 
     err = nvs_get_i64(handle, "timeStampConfig", &timeStampConfig);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         timeStampConfig=0;
-       // inicializarConfig();  // Si no existe, empezamos en 0
+        err = nvs_set_i64(handle, "timeStampConfig", timeStampConfig);
+        if(err != ESP_OK) {
+            ESP_LOGE("NVS", "Error guardando valor (%s)", esp_err_to_name(err));
+        } else {
+            err = nvs_commit(handle);
+            if (err != ESP_OK) {
+                ESP_LOGE("NVS", "Error al hacer commit (%s)", esp_err_to_name(err));
+            } else {
+                ESP_LOGI("NVS", "Valor guardado correctamente");
+            }
+        }
     }
 
     err = nvs_get_i64(handle, "timeStampCurva", &timeStampCurva);
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         timeStampCurva=0;
-        inicializarCurva();  // Si no existe, empezamos en 0
+        err = nvs_set_i64(handle, "timeStampCurva", timeStampCurva);
+        if(err != ESP_OK) {
+            ESP_LOGE("NVS", "Error guardando valor (%s)", esp_err_to_name(err));
+        } else {
+            err = nvs_commit(handle);
+            if (err != ESP_OK) {
+                ESP_LOGE("NVS", "Error al hacer commit (%s)", esp_err_to_name(err));
+            } else {
+                ESP_LOGI("NVS", "Valor guardado correctamente");
+            }
+        }
     }
 
     nvs_close(handle);
 
 
-    if(timeStampDatos==0){
+  /*  if(timeStampDatos==0){
    //     inicializarDatos();
     }else{
         ROMtoRAMDatos();
@@ -915,7 +984,7 @@ void app_main(void) {
         ROMtoRAMConfig();
     }
         // Imprimir configuración para verificar que se cargó correctamente
-       /*printf("Configuración cargada:\n");
+       *//*printf("Configuración cargada:\n");
         printf("Caravana Libre 1: %s\n", configuracion.caravanaLibre1);
         printf("Caravana Libre 2: %s\n", configuracion.caravanaLibre2);
         printf("Caravana Libre 3: %s\n", configuracion.caravanaLibre3);
@@ -923,14 +992,12 @@ void app_main(void) {
         printf("Caravana Libre 5: %s\n", configuracion.caravanaLibre5);
         printf("Calibracion Motor: %d\n", configuracion.calibracionMotor);
         printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
-        printf("Peso Animal Desconocido: %d\n", configuracion.pesoAnimalDesconocido);*/
+        printf("Peso Animal Desconocido: %d\n", configuracion.pesoAnimalDesconocido);
     if(timeStampCurva==0){
-        inicializarCurva();
+        //inicializarCurva();
     }else{
         ROMtoRAMCurva();
-    }
-    
-   /* strncpy(corral[0].nombre, "999000000000015", sizeof(corral[0].nombre) - 1);
+    } strncpy(corral[0].nombre, "999000000000015", sizeof(corral[0].nombre) - 1);
     corral[0].nombre[sizeof(corral[0].nombre) - 1] = '\0';
     strncpy(corral[1].nombre, "982000459578918", sizeof(corral[1].nombre) - 1);
     corral[1].nombre[sizeof(corral[1].nombre) - 1] = '\0';
@@ -962,17 +1029,17 @@ void app_main(void) {
     init_uart();
     //printf("aca no");
     
-    ds1307_write_register(0x00,0x00);
-    ds1307_write_register(0x01,0x10);
-    ds1307_write_register(0x02,0x07);
-    ds1307_write_register(0x03,0x01);
-    ds1307_write_register(0x04,0x10);
-    ds1307_write_register(0x05,0x03);
-    ds1307_write_register(0x06,0x25);
+    //ds1307_write_register(0x00,0x00);
+    //ds1307_write_register(0x01,0x10);
+    //ds1307_write_register(0x02,0x07);
+    //ds1307_write_register(0x03,0x01);
+    //ds1307_write_register(0x04,0x10);
+    //ds1307_write_register(0x05,0x03);
+    //ds1307_write_register(0x06,0x25);
 
     ds1307_write_register(0x07,0x93);
     //traerDatosROMtoRAM();
     printf("arrancando\n");
     vTaskDelay(pdMS_TO_TICKS(2000));
-    xTaskCreate(active_message_task, "active_message_task", 2048, NULL, 9, NULL);
+    xTaskCreate(active_message_task, "active_message_task", 2048*4, NULL, 9, NULL);
 }

@@ -41,7 +41,7 @@ void modbus_slave_process_0x10(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x51(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x40(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x41(uint8_t *request, size_t request_len);
-//void modbus_slave_process_0x42(uint8_t *request, size_t request_len);
+void modbus_slave_process_0x42(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x60(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x61(uint8_t *request, size_t request_len);
 void modbus_slave_process_0x62(uint8_t *request, size_t request_len);
