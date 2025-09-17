@@ -58,7 +58,7 @@ typedef struct {
 void cargar_datos_prueba(data_animal_leido animales1[], int cantidad);
 void inicializar_curvas();
 
-extern data_animal corral[25];
+extern data_animal corral[26];
 extern data_animal auxiliar;
 extern configuration configuracion;
 extern tipo_curva curva[5];

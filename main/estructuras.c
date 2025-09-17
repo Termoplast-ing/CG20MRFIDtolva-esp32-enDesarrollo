@@ -1,6 +1,6 @@
 #include "estructuras.h"
 
-data_animal corral[25]= {0}; // Inicializar el corral con 25 animales
+data_animal corral[26]= {0}; // Inicializar el corral con 25 animales
 data_animal auxiliar = {0}; // Estructura auxiliar para operaciones temporales
 configuration configuracion = {0};
 tipo_curva curva[5] = {0}; // Inicializar las curvas de crecimiento

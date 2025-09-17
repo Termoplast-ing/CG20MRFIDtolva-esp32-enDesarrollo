@@ -617,7 +617,9 @@ printf("%d\n",response[6]);
         configuracion.calibracionMotor=auxConfig.calibracionMotor;
         configuracion.calibracionAgua = auxConfig.calibracionAgua;
         configuracion.pesoAnimalDesconocido = auxConfig.pesoAnimalDesconocido;
-            corral[20].agua=255;
+        strcpy(corral[20].nombre, "999999999999999");
+        corral[20].nombre[15] = '\0';
+        corral[20].agua=255;
     corral[20].cantDosis=1;
     corral[20].indiceCorporal=1;
     corral[20].intervaloMin=0;
@@ -706,13 +708,13 @@ memcpy(corral[21].nombre,configuracion.caravanaLibre1,sizeof(configuracion.carav
 memcpy(corral[22].nombre,configuracion.caravanaLibre2,sizeof(configuracion.caravanaLibre2));
 memcpy(corral[23].nombre,configuracion.caravanaLibre3,sizeof(configuracion.caravanaLibre3));
 memcpy(corral[24].nombre,configuracion.caravanaLibre4,sizeof(configuracion.caravanaLibre4));
-
+memcpy(corral[25].nombre,configuracion.caravanaLibre5,sizeof(configuracion.caravanaLibre5));
 
 for(uint8_t i=21; i<25;i++){
     corral[i].agua=255;
     corral[i].cantDosis=1;
     corral[i].indiceCorporal=1;
-    corral[i].intervaloMin=0;
+    corral[i].intervaloMin=1/3600;
     corral[i].pesoDosis=1;
     corral[i].tipoCurva=1;
     corral[i].fechaServicio=mktime(&ahora);

@@ -36,7 +36,7 @@
 #define valvula GPIO_NUM_33
 #define rele GPIO_NUM_14
 #define UART_NUM2 UART_NUM_2
-#define UART_FIFO_LEN 128
+//#define UART_FIFO_LEN 128
 //#define BUF_SIZE2 2048
 
 
@@ -115,6 +115,7 @@ uint8_t slave_addr = 0x02;
 uint8_t funcionCom=0; 
 float corporal=1;
 float indiceCorporal[3]={0.5,1,2};
+
 
 
 
@@ -435,7 +436,7 @@ uint16_t calcular_peso(uint8_t indice){
     uint8_t pesoDosis=0;
     float pesoTotal=0;
     if(indice<20){    
-        for(uint8_t i=0;i<18;i++){
+        for(uint8_t i=0;i<17;i++){
             printf("indice:%d\n", indice);
             printf("tipocurva:%d\n", corral[indice].tipoCurva);
             printf("curva usa:%d\n", curva[corral[indice].tipoCurva].segmentos[i].inicio);
@@ -448,7 +449,6 @@ uint16_t calcular_peso(uint8_t indice){
             }
         }
         corporal=indiceCorporal[corral[indice].indiceCorporal];
-        corral[indice].cantDosis=1;
         denominador=diaFin-diaInicio;
         pendiente=((float)(pesoFin-pesoInicio)/(float)(denominador));
         pesoDosis=(pendiente*(diaGestacionAUX-diaInicio))+pesoInicio;
@@ -461,9 +461,10 @@ uint16_t calcular_peso(uint8_t indice){
         printf("pesoTotal: %f\n", pesoTotal);
     }else{
         if(indice==20){
-            pesoTotal=corral[20].pesoDosis/corral[20].cantDosis;
+            pesoTotal=(float)(configuracion.pesoAnimalDesconocido/10.0f);
+            printf("pesoTotal Animal desconocido: %f\n", pesoTotal);
         }else{
-            pesoTotal=corral[indice].pesoDosis;
+            pesoTotal=0.1f;
         }
     }
     return pesoTotal;
@@ -504,26 +505,43 @@ void dispensar_alimento(uint8_t indice){
 void debe_comer(uint8_t indice){
     uint8_t dosisDadas=0;
     uint8_t pesoDado=0;
-    double ultimaDosis=0;
+    time_t ultimaDosis=0;
     
+   // if(indice==20){
+     //   memcpy(corral[21].nombre,configuracion.caravanaLibre1,sizeof(configuracion.caravanaLibre1));
     
     ///busco en los registro del dia si ya comio el animal
-    for(uint16_t j=0;j<100;j++){
-        if((strcmp(animal_leido[j].nombre, corral[indice].nombre) == 0)&(animal_leido[j].pesoDispensado > 0)){
+    for(uint8_t j=0;j<100;j++){
+        if(indice==20){
+            if((strcmp(animal_leido[j].nombre,corral[20].nombre) == 0)){
+            dosisDadas ++;
+            ultimaDosis = animal_leido[j].fechaDispensado;
+            pesoDado = animal_leido[j].pesoDispensado;
+        }
+        }else{
+        if((strcmp(animal_leido[j].nombre, corral[indice].nombre) == 0)){
             dosisDadas ++;
             ultimaDosis = animal_leido[j].fechaDispensado;
             pesoDado = animal_leido[j].pesoDispensado;
         }
     }
+        
+    }
+    printf("dosisDadas: %d\n", dosisDadas);
     ///si no comio llamo a la funcion que calcula el peso de la dosis
     if(dosisDadas==0){
+        if(indice<20){
+            printf("El animal %s no ha comido hoy. Preparando dosis.\n", corral[indice].nombre);
         printf("pesoComidaAnimal: %d\n",corral[indice].pesoDosis);
         printf("diaGestacion: %d\n",dia_gestacion(indice));
         dispensado=calcular_peso(indice);
         printf("PESO dispensado: %d\n",dispensado);
+        }else{
+            dispensado=(uint16_t)corral[indice].pesoDosis;
+        }
     }else{
         ///si ya comio verifico si ya paso el tiempo para volver a darle de comer
-        if((dosisDadas<=corral[indice].cantDosis)&(difftime(now, ultimaDosis)>corral[indice].intervaloMin)){
+        if((dosisDadas<corral[indice].cantDosis)&(difftime(now, ultimaDosis)>(corral[indice].intervaloMin)*60*60)){
             dispensado=(uint16_t)pesoDado;
             
         }else{
@@ -542,8 +560,10 @@ void debe_comer(uint8_t indice){
     ///entro y se le dio comida y llamo a la funcion que dispensa la comida
     }else{
         printf("estoy aca\n");
-        if(indice<21){
-            guardar_registro(indice,ahora);
+        if(indice<25){
+            if(indice<21){
+                guardar_registro(indice,ahora);
+            };
             printf("estoy aca guardando\n");
             dispensar_alimento(indice);
         }
@@ -553,7 +573,7 @@ void debe_comer(uint8_t indice){
 /////funcion para atender la lectura de un animal
 void atencion_lectura(){
     ///verifico que si se cambio el dia de gestacion se borren los registros de los animales
-
+uint8_t indico=0;
     actual=dia_gestacion(0);
     printf("actual %d\n",actual);
     if(actual>diaAnterior){
@@ -569,17 +589,36 @@ void atencion_lectura(){
     
 
     ///verifico si la caravana leida es de un animal conocido
-    for (uint8_t i = 0; i < 25; i++){
+    for (uint8_t i = 0; i <= 25; i++){
+        indico=i;
+        printf("%d\n",indico);
         printf("1:%s\n",corral[i].nombre);
         printf("2:%s\n",caravana);
         if(strcmp(corral[i].nombre, caravana) == 0){
-
+            
             debe_comer(i);
             break;
         }
     }
-    
-    
+    indico++;
+    if(indico==26){
+strcpy(corral[20].nombre, caravana);
+        printf("Caravana no reconocida: %s\n", caravana);
+        printf("DATOS ANIMAL %d\n", 20);
+            printf("nombre: %s\n", corral[20].nombre);
+            printf("tipoCurva: %d\n", corral[20].tipoCurva);
+            printf("pesoDosis: %d\n", corral[20].pesoDosis);
+            printf("fechaServicio: %lld\n", corral[20].fechaServicio);   
+            printf("indiceCorporal: %d\n", corral[20].indiceCorporal);
+            printf("agua: %d\n", corral[20].agua);   
+            printf("cantDosis: %d\n", corral[20].cantDosis);
+            printf("intervaloMin: %d\n", corral[20].intervaloMin);
+            printf("========================================\n");
+
+        debe_comer(20);
+    strcpy(corral[20].nombre, "999999999999999");
+        corral[20].nombre[15] = '\0';
+    }
 }
 
 /////inicializacion de la comunicacion I2C (SDA = GPIO21)(SCL = GPIO22)/////
@@ -852,13 +891,13 @@ void active_message_task(void *pvParameters) {
         printf("peso Dosis desconocidos: %d\n", configuracion.pesoAnimalDesconocido);*/
        //DATOS DE CURVAS
 
-        for(uint8_t i=0;i<5;i++){
+        /*for(uint8_t i=0;i<5;i++){
             printf("imprimiendo curva %d\n", i);
             for(uint8_t j=0;j<18;j++){
                 printf("Segmento %d: Inicio: %d, Peso Inicio: %d\n", j, curva[i].segmentos[j].inicio, curva[i].segmentos[j].pesoInicio);
             }
-        }
-      /*  for (int i = 0; i < 100; i++) {
+        }*/
+        for (int i = 0; i < 100; i++) {
             if (strcmp(animal_leido[i].nombre, "000000000000000") != 0 && animal_leido[i].nombre[0] != '\0') {
                 printf("[LISTA] Animal %d -> Nombre: %s, Peso: %d, Fecha: %lld\n",
                 i,
@@ -866,7 +905,7 @@ void active_message_task(void *pvParameters) {
                 animal_leido[i].pesoDispensado,
                 animal_leido[i].fechaDispensado);
     }
-}*/
+}
                 // Mostrar configuración actual
        printf("=== CONFIGURACION ACTUAL ===\n");
         printf("Caravana Libre 1: %s\n", configuracion.caravanaLibre1);
