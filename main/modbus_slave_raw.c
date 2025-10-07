@@ -510,8 +510,9 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
        
             auxiliar.nombre[(i-15)]= request[(i)]; //>> 8) & 0xFF; // Byte alto
             //axiliar.nombre[i*2 + 1] = request[((i*2)+1)] & 0xFF;        // Byte bajo
-            //printf("%c ", auxiliar.nombre[i-15]);
+            printf("%c ", auxiliar.nombre[i-15]);
         }
+       
         auxiliar.tipoCurva = request[31];
         auxiliar.pesoDosis = request[32];
         for(int i = 0; i < 8; i++) {
@@ -1224,16 +1225,21 @@ void modbus_slave_process_0x20(uint8_t *request, size_t len)
     
 
     // Buscar último índice con nombre válido (de adelante hacia atrás)
-    for (int i = 0; i < MAX_ANIMALES; i++) {
-        if (strcmp(animal_leido[i].nombre, "000000000000000") != 0) {
-            ultimo_valido = i;
+    for (int i = 0; i < 20; i++) {
+        if (animal_tranfer[i].nombre[0]!='\0'){
+            if (strcmp(animal_tranfer[i].nombre, "000000000000000") != 0){
+                printf("entro aca %d / %s\n",i, animal_tranfer[i].nombre);
+                ultimo_valido = i;
+            }
         }
     }
     //printf("cantidad de animales: %d\n", ultimo_valido);
 
     if (ultimo_valido != -1) {
         // Copiar a auxiliar
-        animal_leido_AUX = animal_leido[ultimo_valido];
+        strcpy(animal_leido_AUX.nombre, animal_tranfer[ultimo_valido].nombre);
+        animal_leido_AUX.fechaDispensado = animal_tranfer[ultimo_valido].fechaDispensado;
+        animal_leido_AUX.pesoDispensado = animal_tranfer[ultimo_valido].pesoDispensado;
 
         // Borrar ese elemento
 
@@ -1271,6 +1277,8 @@ void modbus_slave_process_0x20(uint8_t *request, size_t len)
     uint16_t crc = modbus_crc16(response, 31);
     response[32] = crc & 0xFF;
     response[33] = crc >> 8;
+
+    uart_flush_input(UART_NUM2);
     
     gpio_set_level(GPIO_NUM_4, 1);
     vTaskDelay(pdMS_TO_TICKS(2));
@@ -1281,10 +1289,30 @@ void modbus_slave_process_0x20(uint8_t *request, size_t len)
     gpio_set_level(GPIO_NUM_4, 0);
     //uart_write_bytes(UART_NUM2, (const char *)response, resp_len);
     ESP_LOGI(TAG, "Respondido 0x80 con %d registros", quantity);
+    /*for(uint8_t j=0;j<20;j++){
+       printf("ENVIO MODBUS:Nombre del animal: ");
+    for(uint8_t i = 0; i < 16; i++) {
+        printf("%c", animal_tranfer[j].nombre[i]);
+    }
+    printf("\n");
+    printf("Fecha de dispensado: %lld\n", animal_tranfer[j].fechaDispensado);
+    printf("Peso dispensado: %d\n", animal_tranfer[j].pesoDispensado);
+    printf("numero de caravana: %d\n", SLAVE_ADDR);
+    }*/
 
-            strcpy(animal_leido[ultimo_valido].nombre, "000000000000000");
-        animal_leido[ultimo_valido].pesoDispensado = 0;
-        animal_leido[ultimo_valido].fechaDispensado = 0;
+    strncpy(animal_tranfer[ultimo_valido].nombre, "000000000000000", sizeof(animal_tranfer[ultimo_valido].nombre));
+    animal_tranfer[ultimo_valido].nombre[15] = '\0';
+    animal_tranfer[ultimo_valido].fechaDispensado = 0;
+    animal_tranfer[ultimo_valido].pesoDispensado = 0;
+    strncpy(animal_leido_AUX.nombre, "000000000000000", sizeof(animal_tranfer[ultimo_valido].nombre));
+    animal_leido_AUX.nombre[15] = '\0';
+    animal_leido_AUX.fechaDispensado = 0;
+    animal_leido_AUX.pesoDispensado = 0;
+
+
+            //strcpy(animal_leido[ultimo_valido].nombre, "000000000000000");
+        //animal_leido[ultimo_valido].pesoDispensado = 0;
+        //animal_leido[ultimo_valido].fechaDispensado = 0;
 
    /* printf("ENVIO MODBUS:Nombre del animal: ");
     for(uint8_t i = 0; i < 16; i++) {
@@ -1295,6 +1323,17 @@ void modbus_slave_process_0x20(uint8_t *request, size_t len)
     printf("Peso dispensado: %d\n", animal_leido_AUX.pesoDispensado);
     printf("numero de caravana: %d\n", SLAVE_ADDR);
 */
+/*for(uint8_t j=0;j<20;j++){
+       printf("ENVIO MODBUS:Nombre del animal: ");
+    for(uint8_t i = 0; i < 16; i++) {
+        printf("%c", animal_tranfer[j].nombre[i]);
+    }
+    printf("\n");
+    printf("Fecha de dispensado: %lld\n", animal_tranfer[j].fechaDispensado);
+    printf("Peso dispensado: %d\n", animal_tranfer[j].pesoDispensado);
+    printf("numero de caravana: %d\n", SLAVE_ADDR);
+    }
+    */
 }
 
 

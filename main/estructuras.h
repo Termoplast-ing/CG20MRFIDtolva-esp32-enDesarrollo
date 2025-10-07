@@ -63,6 +63,7 @@ extern data_animal auxiliar;
 extern configuration configuracion;
 extern tipo_curva curva[5];
 extern data_animal_leido animal_leido[MAX_animales];
+extern data_animal_leido animal_tranfer[20];
 extern data_animal_leido animal_leido_AUX; // Inicializar el registro de animales leídos
 extern time_t now;
 extern struct tm ahora;

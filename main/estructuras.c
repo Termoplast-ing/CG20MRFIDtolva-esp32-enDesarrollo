@@ -6,7 +6,7 @@ configuration configuracion = {0};
 tipo_curva curva[5] = {0}; // Inicializar las curvas de crecimiento
 data_animal_leido animal_leido[100] = {0}; // Inicializar el registro de animales leídos
 data_animal_leido animal_leido_AUX = {0}; // Inicializar el registro de animales leídos auxiliar
-
+data_animal_leido animal_tranfer[20] = {0}; // Inicializar el registro de animales leídos auxiliar
 
 
 /*void cargar_datos_prueba(data_animal_leido animales1[], int cantidad) {
