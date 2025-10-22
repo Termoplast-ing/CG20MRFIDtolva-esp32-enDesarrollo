@@ -970,6 +970,8 @@ for (int i = 0; i < 20; i++) {
 
 void app_main(void) {
  //   printf(">>> Arrancando app_main <<<\n");
+
+ vTaskDelay(pdMS_TO_TICKS(60000));
     gpio_set_direction(motor, GPIO_MODE_OUTPUT);
     gpio_set_direction(valvula, GPIO_MODE_OUTPUT);
     gpio_set_level(valvula,1);

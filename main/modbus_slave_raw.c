@@ -451,6 +451,7 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
     uint16_t quantity   = request[5];
     uint64_t tiempoDatosCentral = 0;
     bool copiar = false;
+    printf("estoy en gestion 51\n");
 
     //uint8_t byte_count  = request[6];
     if (reg_start + quantity > sizeof(holding_registers)/sizeof(uint16_t)) {
@@ -495,13 +496,16 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
     uart_write_bytes(UART_NUM2, (const char *)response, 8);
     uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
     gpio_set_level(GPIO_NUM_4, 0);
+    printf("indice de caravana: %d\n", request[4]);
+    printf("tiempo datos: %lld\n", timeStampDatos);
+    printf("tiempo central: %lld\n", tiempoDatosCentral);
     
     //ESP_LOGI(TAG, "0x51 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
   //  printf("datos time central:%lld\n",tiempoDatosCentral);
    // printf("datos time local:%lld\n",timeStampDatos);
    // printf("indice %d\n",request[4]);
-    if(((tiempoDatosCentral > timeStampDatos) || (tiempoDatosCentral < timeStampDatos) || (timeStampDatos == 0))){
+    if(((tiempoDatosCentral > timeStampDatos) /*|| (tiempoDatosCentral < timeStampDatos)*/ || (timeStampDatos == 0))){
     copiar= true;
 }
  if(copiar){       // Actualizar el timestamp de datos
@@ -525,14 +529,14 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
         auxiliar.intervaloMin=(((uint16_t) request[44]) << 8 |
                                 ((uint16_t) request[45] & 0xFF));
         
-     //   printf("nombre: %s\n", auxiliar.nombre);
-     //   printf("tipoCurva: %d\n", auxiliar.tipoCurva);
-     //   printf("pesoDosis: %d\n", auxiliar.pesoDosis);
-     //   printf("fechaServicio: %lld\n", auxiliar.fechaServicio);
-     //   printf("indiceCorporal: %d\n", auxiliar.indiceCorporal);
-     //   printf("agua: %d\n", auxiliar.agua);
-     //   printf("cantDosis: %d\n", auxiliar.cantDosis);
-     //   printf("intervaloMin: %d\n", auxiliar.intervaloMin);
+        printf("nombre: %s\n", auxiliar.nombre);
+        printf("tipoCurva: %d\n", auxiliar.tipoCurva);
+        printf("pesoDosis: %d\n", auxiliar.pesoDosis);
+        printf("fechaServicio: %lld\n", auxiliar.fechaServicio);
+        printf("indiceCorporal: %d\n", auxiliar.indiceCorporal);
+        printf("agua: %d\n", auxiliar.agua);
+        printf("cantDosis: %d\n", auxiliar.cantDosis);
+        printf("intervaloMin: %d\n", auxiliar.intervaloMin);
                 //                for(uint8_t i = 0; i < 20; i++) {
               // Buscamos un espacio libre en el corral que puede estar lleno de char'0' o estar vacio
                 //if( (corral[i].nombre[0] == '\0')||(corral[i].nombre=='000000000000000') ){ // Verificamos si el nombre está vacío
@@ -545,9 +549,10 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
                             //printf("aqui\n");
 
  }
- if(copiar && (request[4]==19)){
-    timeStampDatos = tiempoDatosCentral; // Actualizar el timestamp de datos
- }
+ //if(copiar && (request[4]==19)){
+ //   timeStampDatos = tiempoDatosCentral; // Actualizar el timestamp de datos
+ //   copiar=false;
+ //}
 }
 // --- Ejemplo: Escribir múltiples registros (0x40) ---
 //Función: escribir datos de configuracion
@@ -1190,7 +1195,7 @@ void modbus_slave_process_0x70(uint8_t *request, size_t len){
     }
 
     now = tiempoReal;
-    printf("timestam tarea: %lld\n", now);
+    printf("timestamp tarea: %lld\n", now);
     localtime_r(&now, &ahora);
     printf("Fecha y hora actual tarea: %04d-%02d-%02d %02d:%02d:%02d\n",
            ahora.tm_year + 1900, ahora.tm_mon + 1, ahora.tm_mday,
