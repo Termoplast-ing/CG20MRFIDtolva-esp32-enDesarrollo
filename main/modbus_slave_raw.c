@@ -496,9 +496,9 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
     uart_write_bytes(UART_NUM2, (const char *)response, 8);
     uart_wait_tx_done(UART_NUM2, pdMS_TO_TICKS(100));
     gpio_set_level(GPIO_NUM_4, 0);
-    printf("indice de caravana: %d\n", request[4]);
-    printf("tiempo datos: %lld\n", timeStampDatos);
-    printf("tiempo central: %lld\n", tiempoDatosCentral);
+   // printf("indice de caravana: %d\n", request[4]);
+   // printf("tiempo datos: %lld\n", timeStampDatos);
+   // printf("tiempo central: %lld\n", tiempoDatosCentral);
     
     //ESP_LOGI(TAG, "0x51 - Escribí %d registros desde %d", quantity, reg_start);
     ///copia en numero de caravana
@@ -514,7 +514,7 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
        
             auxiliar.nombre[(i-15)]= request[(i)]; //>> 8) & 0xFF; // Byte alto
             //axiliar.nombre[i*2 + 1] = request[((i*2)+1)] & 0xFF;        // Byte bajo
-            printf("%c ", auxiliar.nombre[i-15]);
+            //printf("%c ", auxiliar.nombre[i-15]);
         }
        
         auxiliar.tipoCurva = request[31];
@@ -529,14 +529,14 @@ void modbus_slave_process_0x51(uint8_t *request, size_t len)
         auxiliar.intervaloMin=(((uint16_t) request[44]) << 8 |
                                 ((uint16_t) request[45] & 0xFF));
         
-        printf("nombre: %s\n", auxiliar.nombre);
+        /*printf("nombre: %s\n", auxiliar.nombre);
         printf("tipoCurva: %d\n", auxiliar.tipoCurva);
         printf("pesoDosis: %d\n", auxiliar.pesoDosis);
         printf("fechaServicio: %lld\n", auxiliar.fechaServicio);
         printf("indiceCorporal: %d\n", auxiliar.indiceCorporal);
         printf("agua: %d\n", auxiliar.agua);
         printf("cantDosis: %d\n", auxiliar.cantDosis);
-        printf("intervaloMin: %d\n", auxiliar.intervaloMin);
+        printf("intervaloMin: %d\n", auxiliar.intervaloMin);*/
                 //                for(uint8_t i = 0; i < 20; i++) {
               // Buscamos un espacio libre en el corral que puede estar lleno de char'0' o estar vacio
                 //if( (corral[i].nombre[0] == '\0')||(corral[i].nombre=='000000000000000') ){ // Verificamos si el nombre está vacío

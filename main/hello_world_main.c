@@ -96,7 +96,7 @@ error_status_t errores = {0};
 uint32_t diaGestacion=0;
 time_t now;
 struct tm ahora;
-time_t timeStampDatos=1;
+time_t timeStampDatos=0;
 time_t timeStampCentralDatos=1;
 time_t timeStampConfig=1;
 time_t timeStampCentralConfig=1;
@@ -428,8 +428,8 @@ uint8_t dia_gestacion(uint8_t indice){
         }
         diaGestacion = seconds_diff / (60 * 60 * 24);
         diaGestacion=diaGestacion+1;
-        if(diaGestacion>120){
-            diaGestacion=120;
+        if(diaGestacion>114){
+            diaGestacion=114;
         }
         return diaGestacion;
     }
@@ -446,9 +446,17 @@ uint16_t calcular_peso(uint8_t indice){
     uint8_t curvaUsada=corral[indice].tipoCurva;
     float pendiente = 0.0;
     float denominador = 1.0;
-    uint8_t pesoDosis=0;
+    float pesoDosis=0;
     float pesoTotal=0;
     if(indice<20){    
+        if(diaGestacionAUX>=113){
+            for(uint8_t i=16;i<=0;i--){
+                if (curva[curvaUsada].segmentos[i].inicio!=0){
+                    pesoDosis=curva[curvaUsada].segmentos[i].pesoInicio;
+                    break;
+                }
+            }
+        }else{
         for(uint8_t i=0;i<17;i++){
             printf("indice:%d\n", indice);
             printf("tipocurva:%d\n", corral[indice].tipoCurva);
@@ -461,19 +469,22 @@ uint16_t calcular_peso(uint8_t indice){
                 break;
             }
         }
+        }
         corporal=indiceCorporal[corral[indice].indiceCorporal];
         denominador=diaFin-diaInicio;
         pendiente=((float)(pesoFin-pesoInicio)/(float)(denominador));
         pesoDosis=(pendiente*(diaGestacionAUX-diaInicio))+pesoInicio;
-        printf("pesoDosis: %d\n", pesoDosis);
+        printf("pesoDosis: %f\n", pesoDosis);
         printf("cantDosis: %d\n", corral[indice].cantDosis);
         printf("indiceCorporal: %d\n", corral[indice].indiceCorporal);
         printf("pesoAnimal: %d\n", corral[indice].pesoDosis);
+        printf("corporal: %f\n", corporal);
 
-        pesoTotal=(float)((corporal*(((float)pesoDosis/100.0f)*((float)corral[indice].pesoDosis))/(corral[indice].cantDosis)));
+        pesoTotal=((((((float)(corral[indice].pesoDosis)/10.0f)))*corporal*(((float)pesoDosis)/100.0f))/((float)(corral[indice].cantDosis)))*10.0f;
+        //pesoTotal=(float)((corporal*(((float)pesoDosis)/100.0f))*((((float)(corral[indice].pesoDosis))/((float)(corral[indice].cantDosis)))));
         printf("pesoTotal: %f\n", pesoTotal);
     }else{
-        if(indice==20){
+        if((indice==20)||(diaGestacionAUX==0)){
             pesoTotal=(float)(configuracion.pesoAnimalDesconocido/10.0f);
             printf("pesoTotal Animal desconocido: %f\n", pesoTotal);
         }else{
@@ -947,7 +958,7 @@ for (int i = 0; i < 20; i++) {
     }
 }*/
                 // Mostrar configuración actual
-       printf("=== CONFIGURACION ACTUAL ===\n");
+     /*  printf("=== CONFIGURACION ACTUAL ===\n");
         printf("Caravana Libre 1: %s\n", configuracion.caravanaLibre1);
         printf("Caravana Libre 2: %s\n", configuracion.caravanaLibre2);
         printf("Caravana Libre 3: %s\n", configuracion.caravanaLibre3);
@@ -956,7 +967,7 @@ for (int i = 0; i < 20; i++) {
         printf("Calibracion Motor: %d\n", configuracion.calibracionMotor);
         printf("Calibracion Agua: %d\n", configuracion.calibracionAgua);
         printf("Peso Animal Desconocido: %d\n", configuracion.pesoAnimalDesconocido);
-        printf("============================\n");
+        printf("============================\n");*/
         printf("Caravana leida: %s\n", caravana);
         read_time();
         printf("Hora actual: %d:%d:%d\n", ahora.tm_hour, ahora.tm_min, ahora.tm_sec);
@@ -971,7 +982,7 @@ for (int i = 0; i < 20; i++) {
 void app_main(void) {
  //   printf(">>> Arrancando app_main <<<\n");
 
- vTaskDelay(pdMS_TO_TICKS(60000));
+ vTaskDelay(pdMS_TO_TICKS(2500));
     gpio_set_direction(motor, GPIO_MODE_OUTPUT);
     gpio_set_direction(valvula, GPIO_MODE_OUTPUT);
     gpio_set_level(valvula,1);
@@ -980,13 +991,13 @@ void app_main(void) {
     modbus_slave_init();
   //  cargar_datos_prueba(animal_leido,12);
     inicializar_curvas();
-esp_err_t err;
+//esp_err_t err;
     /////leer timestamp de la central y compararlos con los de la ROM
 
 
     ///// Inicializar NVS NO SE VUELVE A EJECUTAR
 
-    err = nvs_flash_init();
+   /* err = nvs_flash_init();
     if (err != ESP_OK) {
         ESP_LOGE("NVS", "Error inicializando NVS");
         return;
@@ -1049,7 +1060,7 @@ esp_err_t err;
         }
     }
 
-    nvs_close(handle);
+    nvs_close(handle);*/
 
 
   /*  if(timeStampDatos==0){
@@ -1121,6 +1132,6 @@ esp_err_t err;
     ds1307_write_register(0x07,0x93);
     //traerDatosROMtoRAM();
     printf("arrancando\n");
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(2500));
     xTaskCreate(active_message_task, "active_message_task", 2048*4, NULL, 9, NULL);
 }
