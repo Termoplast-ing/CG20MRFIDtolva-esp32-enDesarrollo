@@ -428,8 +428,8 @@ uint8_t dia_gestacion(uint8_t indice){
         }
         diaGestacion = seconds_diff / (60 * 60 * 24);
         diaGestacion=diaGestacion+1;
-        if(diaGestacion>114){
-            diaGestacion=114;
+        if(diaGestacion>113){
+            diaGestacion=113;
         }
         return diaGestacion;
     }
@@ -450,14 +450,15 @@ uint16_t calcular_peso(uint8_t indice){
     float pesoTotal=0;
     if(indice<20){    
         if(diaGestacionAUX>=113){
-            for(uint8_t i=16;i<=0;i--){
+            for(uint8_t i=16;i>=0;i--){
                 if (curva[curvaUsada].segmentos[i].inicio!=0){
                     pesoDosis=curva[curvaUsada].segmentos[i].pesoInicio;
+                    printf("pesoDosis: %f\n", pesoDosis);
                     break;
                 }
             }
         }else{
-        for(uint8_t i=0;i<17;i++){
+        for(uint8_t i=0;i<16;i++){
             printf("indice:%d\n", indice);
             printf("tipocurva:%d\n", corral[indice].tipoCurva);
             printf("curva usa:%d\n", curva[corral[indice].tipoCurva].segmentos[i].inicio);
@@ -469,7 +470,7 @@ uint16_t calcular_peso(uint8_t indice){
                 break;
             }
         }
-        }
+        
         corporal=indiceCorporal[corral[indice].indiceCorporal];
         denominador=diaFin-diaInicio;
         pendiente=((float)(pesoFin-pesoInicio)/(float)(denominador));
@@ -479,10 +480,14 @@ uint16_t calcular_peso(uint8_t indice){
         printf("indiceCorporal: %d\n", corral[indice].indiceCorporal);
         printf("pesoAnimal: %d\n", corral[indice].pesoDosis);
         printf("corporal: %f\n", corporal);
-
+    }
+        if(corral[indice].pesoDosis==0){
+            pesoTotal=0;
+        } else {
         pesoTotal=((((((float)(corral[indice].pesoDosis)/10.0f)))*corporal*(((float)pesoDosis)/100.0f))/((float)(corral[indice].cantDosis)))*10.0f;
         //pesoTotal=(float)((corporal*(((float)pesoDosis)/100.0f))*((((float)(corral[indice].pesoDosis))/((float)(corral[indice].cantDosis)))));
         printf("pesoTotal: %f\n", pesoTotal);
+        }
     }else{
         if((indice==20)||(diaGestacionAUX==0)){
             pesoTotal=(float)(configuracion.pesoAnimalDesconocido/10.0f);
@@ -637,9 +642,11 @@ uint8_t indico=0;
         printf("1:%s\n",corral[i].nombre);
         printf("2:%s\n",caravana);
         if(strcmp(corral[i].nombre, caravana) == 0){
+            if(corral[i].fechaServicio<=now){
             
             debe_comer(i);
             break;
+            }
         }
     }
     indico++;
